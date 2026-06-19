@@ -23095,8 +23095,8 @@ var __async = (__this, __arguments, generator) => {
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Sarabun',sans-serif;background:var(--cream);color:var(--text);font-size:15px;line-height:1.5;}
-header{background:var(--navy);color:#fff;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:3px solid var(--gold);box-shadow:0 4px 20px rgba(0,0,0,.3);}
-header h1{font-size:17px;font-weight:700;color:var(--gold2);}
+header{background:var(--navy);color:#fff;padding:10px 28px;display:flex;flex-direction:column;align-items:center;position:sticky;top:0;z-index:100;border-bottom:3px solid var(--gold);box-shadow:0 4px 20px rgba(0,0,0,.3);}
+header h1{font-size:17px;font-weight:700;color:var(--gold2);text-align:center;}
 header .sub{font-size:11px;color:#aaa;margin-top:2px;}
 .hact{display:flex;gap:8px;}
 .btn{display:inline-flex;align-items:center;gap:5px;padding:7px 16px;border-radius:6px;border:none;font-family:'Sarabun',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;}
@@ -23247,10 +23247,7 @@ main{max-width:1280px;margin:0 auto;padding:20px 16px 60px;}
 </head>
 <body>
 <header>
-  <div>
-    <h1>⚖ ร่างคำพิพากษาคดีอาญา</h1>
-    <div class="sub">ยาเสพติด · อาวุธปืน · จราจร · ม.๘๓ / ๙๐ / ๙๑</div>
-  </div>
+  <h1>⚖ ร่างคำพิพากษาคดีอาญา</h1>
   <div class="hact">
     <button class="btn btn-out" onclick="clearAll()">✕ ล้าง</button>
     <button class="btn btn-out" onclick="togglePreview()">👁 ดูตัวอย่าง</button>
@@ -23735,6 +23732,7 @@ function buildCtbl(){
           <input type="text" id="op_${oc.id}" placeholder="วรรค"
             style="width:50px;border:1px solid #ccc;border-radius:4px;padding:3px 6px;font-size:11px;"
             oninput="updateOtherChargeFull('${oc.id}')">
+          <button onclick="ochSaveRow('${oc.id}')" title="บันทึกไว้ใช้ซ้ำ" style="border:none;background:#f3e5f5;color:#6a1b9a;border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;">💾</button>
           <button onclick="removeOtherCharge('${oc.id}')" style="border:none;background:#ffebee;color:#c62828;border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;">✕</button>
         </div>
         <span class="m" id="opreview_${oc.id}" style="font-style:italic;color:#888;font-size:10px;">${oc.matra||'— กรอกข้อมูล —'}</span>
@@ -23756,6 +23754,13 @@ function buildCtbl(){
     btn.textContent='+ เพิ่มกฎหมายอื่น / ฐานอื่น';
     btn.onclick=addOtherCharge;
     btnRow.appendChild(btn);
+    // ── ปุ่ม 📋 ฐานที่เคยบันทึก ──
+    const btnH=document.createElement('button');
+    btnH.className='add-grp';
+    btnH.style.cssText='border-color:#6a1b9a;color:#6a1b9a;font-size:12px;margin-left:6px;';
+    btnH.textContent='📋 ฐานที่เคยบันทึก';
+    btnH.onclick=ochOpenPanel;
+    btnRow.appendChild(btnH);
   }
 }
 
@@ -24900,14 +24905,18 @@ function pval(c,d){
   const rdenom=r<=0.5?2:3;
   let ry_total=by*ct, rm_total=bm*ct, rd_total=bd*ct; // default = ไม่ลด
   if(r<1){
-    // reduce per กระทง
-    const red_y=Math.floor(by/rdenom)*numer;
-    const y_odd=by%rdenom;
-    const m_total2=y_odd*12+bm;
-    const red_m=Math.floor(m_total2*numer/rdenom);
-    const red_d=Math.floor(bd*numer/rdenom);
+    // ลดโทษ: Isolated scaled units — ไม่ normalize เดือน→ปี, อนุญาตวัน→เดือน
+    const red_y=Math.floor(by*numer/rdenom);
+    const y_odd=by*numer%rdenom;
+    const m_total_scaled=y_odd*12+bm*numer;
+    const red_m=Math.floor(m_total_scaled/rdenom);
+    const m_odd_scaled=m_total_scaled%rdenom;
+    const d_total_scaled=m_odd_scaled*30+bd*numer;
+    const red_d_raw=Math.floor(d_total_scaled/rdenom);
+    const extra_m=Math.floor(red_d_raw/30);
+    const red_d=red_d_raw%30;
     // คูณ ct หลัง reduce
-    ry_total=red_y*ct; rm_total=red_m*ct; rd_total=red_d*ct;
+    ry_total=red_y*ct; rm_total=(red_m+extra_m)*ct; rd_total=red_d*ct;
   }
   // raw/boosted สำหรับ backward compat (ใช้ days เฉพาะที่จำเป็น)
   const rawPerKt5=(y*360+m*30+dv);
@@ -25032,13 +25041,13 @@ function plineBase(c,d,multiDef){
   let s='';
   if(ct>1){
     if(oneJp&&oneJp!=='—') s='จำคุก'+kl+oneJp;
-    if(v.f>0&&ct>0) s+=' ปรับ'+(multiDef?'คนละ ':' ')+thMoney(Math.floor(v.f/ct))+' บาท';
+    if(v.f>0&&ct>0) s+=(s?' และปรับ':'ปรับ')+(multiDef?'คนละ ':' ')+thMoney(Math.floor(v.f/ct))+' บาท';
     s+=' จำเลยกระทำความผิดฐานนี้ รวม '+th(ct)+' กระทง';
     if(rawJp&&rawJp!=='—') s+=' เป็นจำคุก'+kl+rawJp;
-    if(v.f>0) s+=' ปรับ'+(multiDef?'คนละ ':' ')+thMoney(v.f)+' บาท';
+    if(v.f>0) s+=(s?' และปรับ':' ปรับ')+(multiDef?'คนละ ':' ')+thMoney(v.f)+' บาท';
   } else {
     if(rawJp&&rawJp!=='—') s='จำคุก'+kl+rawJp;
-    if(v.f>0) s+=(s?' ปรับ'+(multiDef?'คนละ ':' '):'ปรับ'+(multiDef?'คนละ ':' '))+thMoney(v.f)+' บาท';
+    if(v.f>0) s+=(s?' และปรับ'+(multiDef?'คนละ ':' '):'ปรับ'+(multiDef?'คนละ ':' '))+thMoney(v.f)+' บาท';
   }
   return s;
 }
@@ -25057,13 +25066,13 @@ function plineBaseOnly(c,d){
   let s='';
   if(ct>1){
     if(oneJp) s='จำคุก '+oneJp;
-    if(v.f>0&&ct>0) s+=' ปรับ '+thMoney(Math.floor(v.f/ct))+' บาท';
+    if(v.f>0&&ct>0) s+=(s?' และปรับ ':' ปรับ ')+thMoney(Math.floor(v.f/ct))+' บาท';
     s+=' จำเลยกระทำความผิดฐานนี้ รวม '+th(ct)+' กระทง';
     if(rawJp) s+=' เป็นจำคุก '+rawJp;
-    if(v.f>0) s+=' ปรับ '+thMoney(v.f)+' บาท';
+    if(v.f>0) s+=(s?' และปรับ ':' ปรับ ')+thMoney(v.f)+' บาท';
   } else {
     if(rawJp) s='จำคุก '+rawJp;
-    if(v.f>0) s+=(s?' ปรับ ':' ปรับ ')+thMoney(v.f)+' บาท';
+    if(v.f>0) s+=(s?' และปรับ ':' ปรับ ')+thMoney(v.f)+' บาท';
   }
   return s; // ไม่ต่อ boost
 }
@@ -25083,15 +25092,14 @@ function plineBefore(c,d){
   const boostJp=[uy>0?th(uy)+' ปี':'',um>0?th(um)+' เดือน':'',ud>0?th(ud)+' วัน':''].filter(Boolean).join(' ');
   let s='';
   if(ct>1){
-    // หลายกระทง: "จำคุก X (1 กระทง) จำเลยกระทำผิดฐานนี้ รวม N กระทง เป็นจำคุก Y"
     if(oneJp) s='จำคุก '+oneJp;
-    if(v.f>0&&ct>0) s+=' ปรับ '+thMoney(Math.floor(v.f/ct))+' บาท';
+    if(v.f>0&&ct>0) s+=(s?' และปรับ ':' ปรับ ')+thMoney(Math.floor(v.f/ct))+' บาท';
     s+=' จำเลยกระทำความผิดฐานนี้ รวม '+th(ct)+' กระทง';
     if(rawJp) s+=' เป็นจำคุก '+rawJp;
-    if(v.f>0) s+=' ปรับ '+thMoney(v.f)+' บาท';
+    if(v.f>0) s+=(s?' และปรับ ':' ปรับ ')+thMoney(v.f)+' บาท';
   } else {
     if(rawJp) s='จำคุก '+rawJp;
-    if(v.f>0) s+=(s?' ปรับ ':' ปรับ ')+thMoney(v.f)+' บาท';
+    if(v.f>0) s+=(s?' และปรับ ':' ปรับ ')+thMoney(v.f)+' บาท';
   }
   if(v.boost>1){
     const matra=v.boost>1.4?'๙๓':'๙๒';
@@ -25109,7 +25117,7 @@ function plineAfter(c,d){
   if(v.r>=1) return '';
   let s='';
   const redJp=fmtYMD(v.ry,v.rm,v.rd); // ry/rm/rd เป็น total แล้ว ไม่ต้องคูณ ct
-  if(redJp&&redJp!=='—') s+='คงจำคุกมีกำหนด '+redJp;
+  if(redJp&&redJp!=='—') s+='คงจำคุก '+redJp;
   if(v.rf>0)  s+=(s?' และปรับ ':' ปรับ ')+thMoney(v.rf)+' บาท';
   return s;
 }
@@ -25378,6 +25386,8 @@ function citem(d,id,lbl,extra=''){
 
 function ck(id,d){ return document.getElementById('ck_'+id+'_'+d)?.checked; }
 
+// nms: nm + smart space — ถ้าลงท้ายตัวเลขใส่ space ถ้าลงท้ายตัวอักษรไม่ใส่
+function nms(s){ return /[๐-๙0-9]$/.test((s||'').trim())? s+' ' : s; }
 function getCondLines(d, defTotals){
   const out=[];
   const ck=id=>document.getElementById('ck_'+id+'_'+d)?.checked;
@@ -25392,24 +25402,17 @@ function getCondLines(d, defTotals){
   // getCondLines ไม่ต้อง handle rdef
   if(scCk('roto')){
     const y=num('rp_sh'), cp_v=num('rcp_sh'), t=num('rt_sh');
-    const cpTxt = cp_v&&cp_v!=='___' ? ' ให้คุมความประพฤติ'+nm+' เป็นเวลา '+th(cp_v)+' ปี' : '';
-    // ม.๕๖ ต้องอยู่ท้ายเงื่อนไขข้อสุดท้ายเสมอ — ไม่ต่อท้าย roto ก่อน
-    out.push('ไม่ปรากฏว่า'+nm+' เคยต้องโทษจำคุกมาก่อน เห็นสมควรให้โอกาสกลับตนเป็นพลเมืองดี โทษจำคุกให้รอการลงโทษไว้มีกำหนด '+th(y)+' ปี'+cpTxt+' ให้'+nm+' ไปรายงานตัวต่อพนักงานคุมประพฤติปีละ '+th(t)+' ครั้ง ตามเงื่อนไขและระยะเวลาที่พนักงานคุมประพฤติกำหนด');
+    const cpTxt = cp_v&&cp_v!=='___' ? ' ให้คุมความประพฤติ'+nms(nm)+'เป็นเวลา '+th(cp_v)+' ปี' : '';
+    out.push('ไม่ปรากฏว่า'+nms(nm)+'เคยต้องโทษจำคุกมาก่อน เห็นสมควรให้โอกาสกลับตนเป็นพลเมืองดี โทษจำคุกให้รอการลงโทษไว้มีกำหนด '+th(y)+' ปี'+cpTxt+' ให้'+nms(nm)+'ไปรายงานตัวต่อพนักงานคุมประพฤติปีละ '+th(t)+' ครั้ง ตามเงื่อนไขและระยะเวลาที่พนักงานคุมประพฤติกำหนด');
   }
-  // dban — ยังไม่ต่อ ม.๕๖ (อาจมี comm หรือ rehab ตามมา)
-  if(scCk('dban')) out.push('ห้าม'+nm+' เกี่ยวข้องกับยาเสพติดให้โทษ และให้ยินยอมให้พนักงานคุมประพฤติตรวจปัสสาวะทุกครั้งที่ไปรายงานตัว');
-  // comm — ยังไม่ต่อ ม.๕๖ (อาจมี rehab ตามมา)
-  if(scCk('comm')) out.push('ให้'+nm+' กระทำกิจกรรมบริการสังคมหรือสาธารณประโยชน์ตามที่พนักงานคุมประพฤติเห็นสมควรมีกำหนด '+th(num('ch_sh'))+' ชั่วโมง');
-  // rehab — ต่อ ม.๕๖ ท้ายบรรทัดนี้เสมอ (เป็นเงื่อนไขสุดท้ายในกลุ่มคุมประพฤติ)
+  if(scCk('dban')) out.push('ห้าม'+nms(nm)+'เกี่ยวข้องกับยาเสพติดให้โทษ และให้ยินยอมให้พนักงานคุมประพฤติตรวจปัสสาวะทุกครั้งที่ไปรายงานตัว');
+  if(scCk('comm')) out.push('ให้'+nms(nm)+'กระทำกิจกรรมบริการสังคมหรือสาธารณประโยชน์ตามที่พนักงานคุมประพฤติเห็นสมควรมีกำหนด '+th(num('ch_sh'))+' ชั่วโมง');
   if(scCk('rehab')){
-    out.push('กับให้'+nm+' เข้ารับการรักษาการติดยาเสพติดตามที่พนักงานคุมประพฤติเห็นสมควร ตามประมวลกฎหมายอาญา มาตรา ๕๖');
+    out.push('กับให้'+nms(nm)+'เข้ารับการรักษาการติดยาเสพติดตามที่พนักงานคุมประพฤติเห็นสมควร ตามประมวลกฎหมายอาญา มาตรา ๕๖');
   } else if(scCk('roto')){
-    // ไม่มี rehab → ต่อ ม.๕๖ ท้ายเงื่อนไขสุดท้ายที่มีอยู่ (comm หรือ dban หรือ roto)
     if(out.length>0) out[out.length-1]+=' ตามประมวลกฎหมายอาญา มาตรา ๕๖';
   }
-
-  // common conditions — ระบุชื่อจำเลย
-  if(ccCk('susp')) out.push('ให้พักใช้ใบอนุญาตขับรถของ'+nm+' มีกำหนด ๖ เดือน');
+  if(ccCk('susp')) out.push('ให้พักใช้ใบอนุญาตขับรถของ'+nms(nm)+'มีกำหนด ๖ เดือน');
 
   // ── ลำดับท้าย: addp+รวมทั้งสิ้น → naft → nofn/detfn → othe ──
   // บวกโทษ ม.๕๘
@@ -25429,7 +25432,7 @@ function getCondLines(d, defTotals){
         if(!py&&!pm&&!pdv) return;
         const caseNo=c.caseNo||'___', court=c.court||'___';
         const prevStr=fmtUTSplit(py,pm,pdv);
-        addpParts.push('บวกโทษจำคุก '+prevStr+' ของ'+nm.trim()+' ที่รอการลงโทษไว้ในคดีอาญาหมายเลขแดงที่ '+caseNo+' ของ'+court+' เข้ากับโทษในคดีนี้ ตามประมวลกฎหมายอาญา มาตรา ๕๘');
+        addpParts.push('บวกโทษจำคุก '+prevStr+' ของ'+nms(nm.trim())+'ที่รอการลงโทษไว้ในคดีอาญาหมายเลขแดงที่ '+caseNo+' ของ '+court+' เข้ากับโทษในคดีนี้ ตามประมวลกฎหมายอาญา มาตรา ๕๘');
         totalPrevY+=py; totalPrevM+=pm; totalPrevDv+=pdv;
       });
       if(addpParts.length>0){
@@ -25439,7 +25442,7 @@ function getCondLines(d, defTotals){
         const finalY=dt.ty+totalPrevY;
         const finalM=dt.tm+totalPrevM;
         const finalDv=dt.td+totalPrevDv;
-        let totalStr=' รวมโทษจำคุก'+nm.trim()+' ทั้งสิ้น มีกำหนด '+fmtUTSplit(finalY,finalM,finalDv);
+        let totalStr=' รวมโทษจำคุก'+nms(nm.trim())+'ทั้งสิ้น '+fmtUTSplit(finalY,finalM,finalDv);
         if(dt.tf>0) totalStr+=' และปรับ '+thMoney(Math.round(dt.tf*100)/100)+' บาท';
         out.push(addpParts.join(' ')+totalStr);
       }
@@ -25448,11 +25451,11 @@ function getCondLines(d, defTotals){
   // นับโทษต่อ — ถูกย้ายไปจัดการใน buildText ท้ายสุด (หลังริบของกลาง)
   // ม.๒๙/๓๐ + กักขัง — ลำดับ: nofn → detfn1 → detfn (หลัง addp เสมอ)
   // ม.๒๙ อย่างเดียว (ปรับไม่ถึง 500 บาท)
-  if(ccCk('nofn29')) out.push(nm+' ไม่ชำระค่าปรับให้จัดการตามประมวลกฎหมายอาญา มาตรา ๒๙');
+  if(ccCk('nofn29')) out.push(nms(nm)+'ไม่ชำระค่าปรับให้จัดการตามประมวลกฎหมายอาญา มาตรา ๒๙');
   // ม.๒๙, ๓๐
-  if(ccCk('nofn')) out.push(nm+' ไม่ชำระค่าปรับให้จัดการตามประมวลกฎหมายอาญา มาตรา ๒๙, ๓๐');
-  if(ccCk('detfn1')) out.push('หากต้องกักขังแทนค่าปรับให้กักขัง'+nm+' ไม่เกิน ๑ ปี');
-  if(ccCk('detfn')) out.push('หากต้องกักขังแทนค่าปรับให้กักขัง'+nm+' เกิน ๑ ปี แต่ไม่เกิน ๒ ปี');
+  if(ccCk('nofn')) out.push(nms(nm)+'ไม่ชำระค่าปรับให้จัดการตามประมวลกฎหมายอาญา มาตรา ๒๙, ๓๐');
+  if(ccCk('detfn1')) out.push('หากต้องกักขังแทนค่าปรับให้กักขัง'+nms(nm)+'ไม่เกิน ๑ ปี');
+  if(ccCk('detfn')) out.push('หากต้องกักขังแทนค่าปรับให้กักขัง'+nms(nm)+'เกิน ๑ ปี แต่ไม่เกิน ๒ ปี');
   if(ck('othe')&&val('oo'+d)) out.push(val('oo'+d));
   return out;
 }
@@ -25558,35 +25561,52 @@ function buildText(){
       const defNums=defKey.split(',').map(Number).filter(d=>defs.includes(d));
       const lbl=defNums.length===defs.length?grpLbl(defs):grpLbl(defNums);
       const sm=formatMatras(dedupMatra(charges));
-      verdictLines.push(lbl+' มีความผิดตาม'+sm+' ประกอบประมวลกฎหมายอาญา มาตรา ๘๓');
+      verdictLines.push(nms(lbl)+'มีความผิดตาม'+sm+' ประกอบประมวลกฎหมายอาญา มาตรา ๘๓');
     });
   }
   // จัดกลุ่มจำเลยที่มีฐาน indiv เหมือนกันทุกฐาน → รวมบรรทัดเดียว
   // ใช้ getChargedRaw (ไม่กรอง dim ม.๙๐ ออก) เพื่อให้ทุกฐานที่ติ๊กปรากฏในบรรทัดพิพากษาว่า
+  // FIX: per-defendant dimIds — ห้ามกรอง dim global ข้ามจำเลย (กฎเหล็ก)
+  function dimIdsForDef(d){
+    const s=new Set();
+    (m90groups[d-1]||[]).forEach(g=>{
+      if(!g.heavy||g.heavy==='') return;
+      g.ids.forEach(id=>{ if(id!==g.heavy) s.add(id); });
+    });
+    m83m90.forEach(g=>{
+      if(!g.heavy||g.heavy==='') return;
+      if(m83map[g.heavy]&&m83map[g.heavy].has(d))
+        g.ids.forEach(id=>{ if(id!==g.heavy) s.add(id); });
+    });
+    return s;
+  }
   const verdictUsed=new Set();
   defs.forEach(d=>{
     if(verdictUsed.has(d)) return;
     const rawIds=new Set(getChargedRaw(d).map(c=>c.id));
-    const myC=indiv.filter(c=>rawIds.has(c.id));
+    // per-defendant dim: กรองเฉพาะ dim ของ def นั้นๆ ไม่ใช่ global
+    const myDimIds=dimIdsForDef(d);
+    const myC=allC.filter(c=>rawIds.has(c.id)&&!isSharedCharge(c.id)&&!myDimIds.has(c.id));
     if(!myC.length) return;
-    // หาจำเลยอื่นที่มีฐาน indiv เหมือนกันทุกฐาน
+    // หาจำเลยอื่นที่มีฐาน indiv เหมือนกันทุกฐาน (ใช้ per-defendant dim ของแต่ละคน)
     const myIds=new Set(myC.map(c=>c.id));
     const sameGroup=defs.filter(dd=>{
       const ddRawIds=new Set(getChargedRaw(dd).map(c=>c.id));
-      const ddC=indiv.filter(c=>ddRawIds.has(c.id));
+      const ddDimIds=dimIdsForDef(dd);
+      const ddC=allC.filter(c=>ddRawIds.has(c.id)&&!isSharedCharge(c.id)&&!ddDimIds.has(c.id));
       if(ddC.length!==myC.length) return false;
       return ddC.every(c=>myIds.has(c.id));
     });
     sameGroup.forEach(dd=>verdictUsed.add(dd));
-    // รวม dim ของ ม.๙๐ (ที่กรองออกจาก indiv) เข้ามาใน matra เพื่อแสดงในบรรทัดพิพากษาว่า
+    // รวม dim ของ ม.๙๐ ของ def นั้น เข้ามาใน matra เพื่อแสดงในบรรทัดพิพากษาว่า
     const myCWithDim=allC.filter(c=>rawIds.has(c.id)&&!isSharedCharge(c.id));
     const myCD=dedupMatra(myCWithDim);
     if(sameGroup.length===defs.length&&defs.length>1){
-      verdictLines.push(grpLbl(defs)+' มีความผิดตาม'+formatMatras(myCD));
+      verdictLines.push(nms(grpLbl(defs))+'มีความผิดตาม'+formatMatras(myCD));
     } else if(sameGroup.length>1){
-      verdictLines.push(grpLbl(sameGroup)+' มีความผิดตาม'+formatMatras(myCD));
+      verdictLines.push(nms(grpLbl(sameGroup))+'มีความผิดตาม'+formatMatras(myCD));
     } else {
-      verdictLines.push((N===1?'จำเลย':'จำเลยที่ '+gl(d))+' มีความผิดตาม'+formatMatras(myCD));
+      verdictLines.push(nms(N===1?'จำเลย':'จำเลยที่ '+gl(d))+'มีความผิดตาม'+formatMatras(myCD));
     }
   });
   if(!verdictLines.length) return '';
@@ -25599,10 +25619,10 @@ function buildText(){
   if(m91defs.length>0){
     if(m91defs.length===defs.length && defs.length>1){
       // ทุกคนใช้ → รวมบรรทัดเดียว
-      lines.push('การกระทำของ'+grpLbl(defs)+' เป็นความผิดหลายกรรมต่างกัน ให้ลงโทษทุกกรรมเป็นกระทงความผิดไป ตามประมวลกฎหมายอาญา มาตรา ๙๑');
+      lines.push('การกระทำของ'+nms(grpLbl(defs))+'เป็นความผิดหลายกรรมต่างกัน ให้ลงโทษทุกกรรมเป็นกระทงความผิดไป ตามประมวลกฎหมายอาญา มาตรา ๙๑');
     } else {
       // บางคนใช้ → รวมบรรทัดเดียว (grpLbl จัดการ "จำเลยที่ ๑ และที่ ๓" ให้)
-      lines.push('การกระทำของ'+grpLbl(m91defs)+' เป็นความผิดหลายกรรมต่างกัน ให้ลงโทษทุกกรรมเป็นกระทงความผิดไป ตามประมวลกฎหมายอาญา มาตรา ๙๑');
+      lines.push('การกระทำของ'+nms(grpLbl(m91defs))+'เป็นความผิดหลายกรรมต่างกัน ให้ลงโทษทุกกรรมเป็นกระทงความผิดไป ตามประมวลกฎหมายอาญา มาตรา ๙๑');
     }
   }
 
@@ -25618,7 +25638,7 @@ function buildText(){
     const d0=grpDefs[0]||defs[0];
     const v=m83pval(hc,d0);
     const lbl=grpDefs.length===defs.length?grpLbl(defs):grpLbl(grpDefs);
-    const jsfx=mkJsfx(lbl,grpDefs.length>1);
+    const jsfx=grpDefs.length>1?'คนละ ':N===1?' ':' ';
     // declaration ม.๙๐ + โทษ — push หลัง shared Pass A
     let declLine='การกระทำของ'+lbl+' ฐานร่วมกัน'+pcs.map(c=>c.label).join(' และฐานร่วมกัน')+
       ' เป็นกรรมเดียวเป็นความผิดต่อกฎหมายหลายบท ให้ลงโทษฐานร่วมกัน'+hc.label+
@@ -25636,7 +25656,7 @@ function buildText(){
       const boostWord=v.boost>1.4?'กึ่งหนึ่ง':'หนึ่งในสาม';
       const matra92=v.boost>1.4?'๙๓':'๙๒';
       const boostKey=lbl+'|'+boostWord+'|'+matra92;
-      const boostPrefix='เพิ่มโทษ'+lbl+' '+boostWord+' ตามประมวลกฎหมายอาญา มาตรา '+matra92+' ';
+      const boostPrefix='เพิ่มโทษ'+nms(lbl)+boostWord+' ตามประมวลกฎหมายอาญา มาตรา '+matra92+' ';
       const chargeText='ฐานร่วมกัน'+hc.label+' เป็นจำคุก'+lbl+jsfx+boostedJp;
       m83m90BoostLines.push({key:boostKey, prefix:boostPrefix, chargeText});
     }
@@ -25720,22 +25740,23 @@ function buildText(){
 
     Object.values(baseGrps).forEach(({defList,v})=>{
       const lbl=defList.length===defs.length?grpLbl(defs):defList.length>1?grpLbl(defList):(N===1?'จำเลย':'จำเลยที่ '+gl(defList[0]));
-      const jsfx=mkJsfx(lbl,defList.length>1);
-      const fineSfx=defList.length>1?'คนละ':'';
+      const multi83=defList.length>1;
+      const jsfx=multi83?'คนละ ':N===1?' ':' ';
+      const fineSfx=multi83?'คนละ':'';
       // Isolated: แสดง y/m/d โดยตรง ไม่ normalize ผ่าน days
       const oneJp83=fmtYMD(v.y, v.m, v.dv); // per กระทง
       const rawJp=fmtYMD(v.y*ct83m, v.m*ct83m, v.dv*ct83m); // รวมทุกกระทง
 
-      let ps=(sharedIdx===0?'ลงโทษ'+lbl+' ':'')+'ฐานร่วมกัน'+c.label;
-      if(oneJp83) ps+=' จำคุก'+lbl+jsfx+oneJp83;
-      if(v.f>0&&ct83m>1) ps+=' ปรับ'+(fineSfx?fineSfx+' ':' ')+thMoney(Math.floor(v.f/ct83m))+' บาท';
-      else if(v.f>0) ps+=' ปรับ'+(fineSfx?fineSfx+' ':' ')+thMoney(v.f)+' บาท';
+      let ps=(sharedIdx===0?'ลงโทษ'+nms(lbl):'')+'ฐานร่วมกัน'+c.label;
+      if(oneJp83) ps+=multi83?' จำคุกคนละ '+oneJp83:' จำคุก'+lbl+jsfx+oneJp83;
+      if(v.f>0&&ct83m>1) ps+=(ps.includes('จำคุก')?' และปรับ':' ปรับ')+(fineSfx?fineSfx+' ':' ')+thMoney(Math.floor(v.f/ct83m))+' บาท';
+      else if(v.f>0) ps+=(ps.includes('จำคุก')?' และปรับ':' ปรับ')+(fineSfx?fineSfx+' ':' ')+thMoney(v.f)+' บาท';
       lines.push(ps); sharedIdx++;
 
       if(ct83m>1){
         let ctLine=grpLbl(defs)+'กระทำความผิดฐานนี้คนละ '+th(ct83m)+' กระทง';
         if(rawJp) ctLine+=' เป็นจำคุก'+lbl+jsfx+rawJp;
-        if(v.f>0) ctLine+=' ปรับ'+(fineSfx?fineSfx+' ':' ')+thMoney(v.f)+' บาท';
+        if(v.f>0) ctLine+=(rawJp?' และปรับ':' ปรับ')+(fineSfx?fineSfx+' ':' ')+thMoney(v.f)+' บาท';
         lines.push(ctLine);
       }
     });
@@ -25751,20 +25772,25 @@ function buildText(){
 
     Object.values(boostGrps83).forEach(({defList,v})=>{
       const lbl=defList.length===defs.length?grpLbl(defs):defList.length>1?grpLbl(defList):(N===1?'จำเลย':'จำเลยที่ '+gl(defList[0]));
-      const jsfx=mkJsfx(lbl,defList.length>1);
+      const jsfx=defList.length>1?'คนละ ':N===1?' ':' ';
       const fineSfx=defList.length>1?'คนละ':'';
       const boostedJp=fmtYMD(v.by*ct83m,v.bm*ct83m,v.bd*ct83m);
       const boostWord=v.boost>1.4?'กึ่งหนึ่ง':'หนึ่งในสาม';
       const matra92=v.boost>1.4?'๙๓':'๙๒';
       const perKratong=ct83m>1;
       const boostKey=lbl+'|'+boostWord+'|'+matra92+(perKratong?'|k':'');
-      const boostPrefix='เพิ่มโทษ'+lbl+' '+(perKratong?'กระทงละ':'')+boostWord+' ตามประมวลกฎหมายอาญา มาตรา '+matra92+' ';
+      const boostPrefix='เพิ่มโทษ'+nms(lbl)+(perKratong?'กระทงละ':'')+boostWord+' ตามประมวลกฎหมายอาญา มาตรา '+matra92+' ';
       const boostFD=v.boost>=1.5?2:3;
       const bF=v.f>0?Math.floor(v.f*(boostFD+1)/boostFD*100)/100:0;
-      // ชื่อฐาน + ชื่อจำเลยในกรณี N>1
+      // chargeText: shared ทุก def ใส่ lbl+jsfx, per-def ไม่ใส่ชื่อจำเลย (individual loop จัดการ)
       let chargeText='ฐานร่วมกัน'+c.label+' เป็นจำคุก'+lbl+jsfx+boostedJp;
-      if(bF>0) chargeText+=' ปรับ'+(fineSfx?fineSfx+' ':' ')+thMoney(bF)+' บาท';
-      sharedBoostLines.push({key:boostKey, prefix:boostPrefix, chargeText});
+      let chargeTextPerDef='ฐานร่วมกัน'+c.label+' เป็นจำคุก '+boostedJp;
+      if(bF>0){
+        chargeText+=' ปรับ'+(fineSfx?fineSfx+' ':' ')+thMoney(bF)+' บาท';
+        chargeTextPerDef+=' และปรับ '+thMoney(bF)+' บาท';
+      }
+      const entryRaw=defs.map(dd=>m83pval(c,dd).raw).reduce((a,b)=>Math.max(a,b),0);
+      sharedBoostLines.push({key:boostKey, prefix:boostPrefix, chargeText, chargeTextPerDef, raw:entryRaw});
     });
   });
 
@@ -25810,16 +25836,9 @@ function buildText(){
 
     // ── รวม m90 groups + individual charges เป็น renderList เดียว sort หนัก→เบา ──
     // กฎเหล็ก: เรียงตาม raw ของ heavy (m90) หรือ raw ของ charge (individual)
-    // individual charges (ไม่ใช่ dim, ไม่ใช่ shared m83)
-    const activeCs=(()=>{
-      const dimSet=new Set();
-      if(mode==='m90') m90groups[d-1].forEach(function(g){
-        if(!g.heavy) return;
-        g.ids.forEach(function(id){ if(id!==g.heavy) dimSet.add(id); }); // เฉพาะ dim ไม่รวม heavy
-      });
-      return cs.filter(c=>!dimSet.has(c.id)&&!m83ids.has(c.id));
-    })();
-    defActiveCsMap[d]={activeCs,singleCharge:activeCs.length===1&&!m91used[d-1]};
+    // defActiveCsMap build ครบแล้วใน PRE-PASS ด้านบน ไม่ต้อง overwrite ซ้ำที่นี่
+    // (การ overwrite ใน render loop ทำให้ sdg ตรวจ def ที่ยังไม่ถึงไม่เจอ)
+    const activeCs=defActiveCsMap[d].activeCs;
 
     if(passARendered.has(d)) return;
 
@@ -25872,7 +25891,7 @@ function buildText(){
         let vb;
         if(isShared){
           const vm=m83pval(hc,sameGrpDefs[0]);
-          const jsfxS=mkJsfx(grpNm,sameGrpDefs.length>1);
+          const jsfxS=sameGrpDefs.length>1?'คนละ ':N===1?' ':' ';
           const rawJpS=fmtYMD(vm.y,vm.m,vm.dv)==='—'?'':fmtYMD(vm.y,vm.m,vm.dv);
           vb=rawJpS?'ลงโทษจำคุก'+grpNm+jsfxS+rawJpS:'';
           if(vm.f>0) vb+=(vb?' และปรับ':'ปรับ')+(sameGrpDefs.length>1?'คนละ ':'')+thMoney(vm.f)+' บาท';
@@ -25882,18 +25901,18 @@ function buildText(){
         let line;
         const rk=isShared?'ร่วมกัน':''; // prefix ฐาน (ไม่มีช่องว่างนำหน้า label)
         if(grp.heavy==='__equal__'){
-          line='การกระทำของ'+grpNm+' ฐาน'+rk+pcs.map(c=>c.label).join(' กับฐาน'+rk)+
+          line='การกระทำของ'+nms(grpNm)+'ฐาน'+rk+pcs.map(c=>c.label).join(' กับฐาน'+rk)+
             ' เป็นกรรมเดียวเป็นความผิดต่อกฎหมายหลายบท แต่ละบทมีโทษเท่ากัน ให้ลงโทษฐาน'+rk+
             hc.label+' ตามประมวลกฎหมายอาญา มาตรา ๙๐';
         } else {
-          line='การกระทำของ'+grpNm+' ฐาน'+rk+pcs.map(c=>c.label).join(' และฐาน'+rk)+
+          line='การกระทำของ'+nms(grpNm)+'ฐาน'+rk+pcs.map(c=>c.label).join(' และฐาน'+rk)+
             ' เป็นกรรมเดียวเป็นความผิดต่อกฎหมายหลายบท ให้ลงโทษฐาน'+rk+
             hc.label+' ซึ่งเป็นบทกฎหมายที่มีโทษหนักที่สุด ตามประมวลกฎหมายอาญา มาตรา ๙๐';
         }
         if(vb) line+=' '+vb;
         if(isFirstLine&&N>1&&!multiGrp){
-          const pfx='การกระทำของ'+nm+' ';
-          line='ลงโทษ'+nm+' '+(line.startsWith(pfx)?line.slice(pfx.length):line);
+          const pfx='การกระทำของ'+nms(nm);
+          line='ลงโทษ'+nms(nm)+(line.startsWith(pfx)?line.slice(pfx.length):line);
         }
         lines.push(line);
         // Pass B: เก็บ boost ของ m90 individual
@@ -25927,23 +25946,24 @@ function buildText(){
             if(ddIds!==csIds) return false;
             return activeCsP.every(cc=>{
               const vd=pval(cc,d),vdd=pval(cc,dd);
-              return vd.raw===vdd.raw&&vd.f===vdd.f&&vd.boost===vdd.boost;
+              return vd.raw===vdd.raw&&vd.f===vdd.f;
             });
           }):[d];
           sdg.forEach(dd=>passARendered.add(dd));
           const grpNm=sdg.length>1?grpLbl(sdg):nm;
           const vb=plineBase(c,sdg[0],sdg.length>1);
+          const singleDef=N===1&&sdg.length===1;
           const singleChargeCase=skipFhanPrefix;
           if(singleChargeCase){
-            lines.push('ลงโทษ'+grpNm+(vb?' '+vb:''));
+            lines.push(singleDef?(vb||''):'ลงโทษ'+grpNm+(vb?' '+vb:''));
           } else {
-            lines.push('ลงโทษ'+grpNm+' ฐาน'+c.label+(vb?' '+vb:''));
+            lines.push(singleDef?('ฐาน'+c.label+(vb?' '+vb:'')):'ลงโทษ'+nms(grpNm)+'ฐาน'+c.label+(vb?' '+vb:''));
           }
         } else {
           // item ที่ 2+ ของ def เดียวกัน — render ต่อเนื่องเสมอ
           if(passARendered.has(d)){
             const vb=plineBase(c,d,false);
-            lines.push('ลงโทษ'+nm+' ฐาน'+c.label+(vb?' '+vb:''));
+            lines.push(N===1?('ฐาน'+c.label+(vb?' '+vb:'')):'ลงโทษ'+nms(nm)+'ฐาน'+c.label+(vb?' '+vb:''));
           }
         }
         isFirstLine=false;
@@ -25990,18 +26010,18 @@ function buildText(){
     const nm=N===1?'จำเลย':'จำเลยที่ '+gl(d);
     const boostGroups={}; // key = matra
 
-    // shared per-def
+    // shared per-def — ใช้ chargeTextPerDef (ไม่มีชื่อจำเลย)
     (sharedBoostPerDef[d]||[]).forEach(entry=>{
       const matra=entry.prefix.includes('มาตรา ๙๓')?'๙๓':'๙๒';
       const bw=matra==='๙๓'?'กึ่งหนึ่ง':'หนึ่งในสาม';
       if(!boostGroups[matra]) boostGroups[matra]={matra,boostWord:bw,chargeTexts:[]};
-      boostGroups[matra].chargeTexts.push(entry.chargeText);
+      boostGroups[matra].chargeTexts.push({text:entry.chargeTextPerDef||entry.chargeText, raw:entry.raw||0});
     });
 
     // m90 individual
     indivBoostLines.filter(e=>e.d===d).forEach(e=>{
       if(!boostGroups[e.matra]) boostGroups[e.matra]={matra:e.matra,boostWord:e.boostWord,chargeTexts:[]};
-      boostGroups[e.matra].chargeTexts.push(e.chargeText);
+      boostGroups[e.matra].chargeTexts.push({text:e.chargeText, raw:e.raw||0});
     });
 
     // regular individual (เรียงลำดับตาม renderList = Pass A)
@@ -26018,50 +26038,33 @@ function buildText(){
       const ct=v.ct||1;
       const boostJp=fmtYMD(v.by*ct,v.bm*ct,v.bd*ct);
       let ct_text='ฐาน'+c.label+' เป็นจำคุก '+boostJp;
-      if(v.boostedF>0) ct_text+=' ปรับ '+thMoney(v.boostedF)+' บาท';
-      boostGroups[matra].chargeTexts.push(ct_text);
+      if(v.boostedF>0) ct_text+=' และปรับ '+thMoney(v.boostedF)+' บาท';
+      boostGroups[matra].chargeTexts.push({text:ct_text, raw:v.raw});
     });
 
     if(!Object.keys(boostGroups).length) return;
 
-    // sort chargeTexts หนัก→เบา ตาม raw เหมือน Pass A
+    // sort chargeTexts หนัก→เบา ตาม raw
     Object.values(boostGroups).forEach(grp=>{
-      grp.chargeTexts.sort((a,b)=>{
-        // ดึง charge จากชื่อฐานใน chargeText แล้วเปรียบ raw
-        const labelA=a.replace(/^ฐาน(ร่วมกัน)?/,'').replace(/ เป็นจำคุก.*$/,'');
-        const labelB=b.replace(/^ฐาน(ร่วมกัน)?/,'').replace(/ เป็นจำคุก.*$/,'');
-        const cA=CHARGES.find(c=>c.label===labelA);
-        const cB=CHARGES.find(c=>c.label===labelB);
-        const rawA=cA?pval(cA,d).raw:0;
-        const rawB=cB?pval(cB,d).raw:0;
-        if(rawB!==rawA) return rawB-rawA;
-        const fA=cA?pval(cA,d).f:0;
-        const fB=cB?pval(cB,d).f:0;
-        return fB-fA;
-      });
+      grp.chargeTexts.sort((a,b)=>b.raw-a.raw);
     });
 
     // render: 1 บรรทัดต่อ matra ต่อ def
-    const totalGroups=Object.keys(boostGroups).length;
     Object.values(boostGroups).forEach(grp=>{
       const ct0=activeCs.filter(c=>pval(c,d).boost>1&&(pval(c,d).boost>1.4?'๙๓':'๙๒')===grp.matra)
         .map(c=>Math.max(1,ta(gV('pct_'+c.id+'_'+d))||1))[0]||1;
       const perKratong=ct0>1;
-      // ฐานชื่อ → ใส่ก่อน boostWord เสมอ ทั้งฐานเดียวและหลายฐาน
-      const chargeNames=grp.chargeTexts.map(ct=>ct.replace(/ เป็นจำคุก.*$/,'')); // "ฐาน..."
-      const penaltyParts=grp.chargeTexts.map(ct=>ct.replace(/^ฐาน\S+\s*/,'')); // "เป็นจำคุก..."
+      const chargeNames=grp.chargeTexts.map(ct=>ct.text.replace(/ เป็นจำคุก.*$/,''));
+      const penaltyParts=grp.chargeTexts.map(ct=>ct.text.replace(/^ฐาน\S+\s*/,''));
       const allSamePenalty=penaltyParts.every(p=>p===penaltyParts[0]);
       let line;
       if(grp.chargeTexts.length===1){
-        // ฐานเดียว: "เพิ่มโทษจำเลย ฐาน[ชื่อ] กึ่งหนึ่ง ตาม... เป็นจำคุก..."
-        line='เพิ่มโทษ'+nm+' '+chargeNames[0]+' '+(perKratong?'กระทงละ':'')+grp.boostWord+' ตามประมวลกฎหมายอาญา มาตรา '+grp.matra+' '+penaltyParts[0];
+        line='เพิ่มโทษ'+nms(nm)+chargeNames[0]+' '+(perKratong?'กระทงละ':'')+grp.boostWord+' ตามประมวลกฎหมายอาญา มาตรา '+grp.matra+' '+penaltyParts[0];
       } else if(allSamePenalty){
-        // หลายฐาน โทษเท่ากัน: "เพิ่มโทษจำเลย ฐาน... ฐาน... กึ่งหนึ่ง ตาม... เป็นจำคุก..."
-        line='เพิ่มโทษ'+nm+' '+chargeNames.join(' ')+' '+(perKratong?'กระทงละ':'')+grp.boostWord+' ตามประมวลกฎหมายอาญา มาตรา '+grp.matra+' '+penaltyParts[0];
+        line='เพิ่มโทษ'+nms(nm)+chargeNames.join(' ')+' '+(perKratong?'กระทงละ':'')+grp.boostWord+' ตามประมวลกฎหมายอาญา มาตรา '+grp.matra+' '+penaltyParts[0];
       } else {
-        // หลายฐาน โทษต่างกัน: แยกบรรทัด
-        line='เพิ่มโทษ'+nm+' '+(perKratong?'กระทงละ':'')+grp.boostWord+' ตามประมวลกฎหมายอาญา มาตรา '+grp.matra;
-        grp.chargeTexts.forEach(ct=>{ line+=' '+ct; });
+        line='เพิ่มโทษ'+nms(nm)+(perKratong?'กระทงละ':'')+grp.boostWord+' ตามประมวลกฎหมายอาญา มาตรา '+grp.matra;
+        grp.chargeTexts.forEach(ct=>{ line+=' '+ct.text; });
       }
       lines.push(line);
     });
@@ -26074,10 +26077,11 @@ function buildText(){
   if(hasReduce){
     // ตรวจว่ามีหลายกระทงหรือหลายจำเลย → ใช้ "กระทงละ", มิฉะนั้น "ให้"
     const hasMultiKratong=allC.some(c=>defs.some(d=>Math.max(1,ta(gV('pct_'+c.id+'_'+d))||1)>1))||
-      allC.some(c=>Math.max(1,ta(gV('m83ct_'+c.id))||1)>1);
+      allC.some(c=>Math.max(1,ta(gV('m83ct_'+c.id))||1)>1)||
+      defs.some(d=>m91used[d-1]&&getCharged(d).length>1);
     const reduceWord=hasMultiKratong?'ให้กระทงละ':(defs.length>1?'ให้คนละ':'ให้');
     // Push header "ลดโทษ" ครั้งเดียวต่อคดี — ฐานที่ตามมาไม่ต้องซ้ำคำว่า "ลดโทษ..."
-    lines.push(grpLbl(defs)+'ให้การรับสารภาพ เป็นประโยชน์แก่การพิจารณา มีเหตุบรรเทาโทษ ลดโทษ'+reduceWord+'กึ่งหนึ่ง ตามประมวลกฎหมายอาญา มาตรา ๗๘');
+    lines.push(nms(grpLbl(defs))+'ให้การรับสารภาพ เป็นประโยชน์แก่การพิจารณา มีเหตุบรรเทาโทษ ลดโทษ'+reduceWord+'กึ่งหนึ่ง ตามประมวลกฎหมายอาญา มาตรา ๗๘');
     // ตั้ง flag เพื่อให้ฐานที่ตามมาตัด "ลดโทษให้กึ่งหนึ่ง" ออกจาก prefix
   }
 
@@ -26090,8 +26094,8 @@ function buildText(){
     const redJp=fmtYMD(v.ry,v.rm,v.rd); // ry/rm/rd เป็น total แล้ว
     if(!redJp||redJp==='—') return;
     const lbl2=grpDefs2.length===defs.length?grpLbl(defs):grpLbl(grpDefs2);
-    const sfx2=mkJsfx(lbl2,grpDefs2.length>1);
-    let ps='ฐานร่วมกัน'+hc.label+' คงจำคุก'+lbl2+sfx2+redJp;
+    const sfx2=grpDefs2.length>1?lbl2+'คนละ ':lbl2+mkJsfx(lbl2,false);
+    let ps='ฐานร่วมกัน'+hc.label+' คงจำคุก'+sfx2+redJp;
     if(v.rf>0) ps+=' และปรับ'+(grpDefs2.length>1?lbl2+'คนละ ':'')+thMoney(v.rf)+' บาท';
     lines.push(ps);
   });
@@ -26122,7 +26126,7 @@ function buildText(){
       const lbl=defList.length===chargeDefSet2.length?
         (chargeDefSet2.length===defs.length?grpLbl(defs):grpLbl(chargeDefSet2)):
         defList.length>1?grpLbl(defList):(N===1?'จำเลย':'จำเลยที่ '+gl(defList[0]));
-      const sfx=lbl+mkJsfx(lbl,defList.length>1);
+      const sfx=defList.length>1?lbl+'คนละ ':lbl+mkJsfx(lbl,false);
       let ps='ฐานร่วมกัน'+c.label;
       // ลบ "ลดโทษให้กึ่งหนึ่ง" ออกจาก v.rt เพราะ push header แล้ว
       const rtClean=v.rt?v.rt.replace(/ลดโทษให้[^ ]*/,'').trim():'';
@@ -26175,12 +26179,12 @@ function buildText(){
       sameGroup.forEach(dd=>pcRendered.add(c.id+'|'+dd));
       const lbl=grpLbl(sameGroup);
       const multi=sameGroup.length>1;
-      const hasJail=va.includes('คงจำคุกมีกำหนด');
+      const hasJail=va.includes('คงจำคุก');
       let ps;
       if(hasJail){
-        // มีจำคุก → "ฐาน... คงจำคุก[ใคร] มีกำหนด X [และปรับ Y]"
-        const sfx=lbl+mkJsfx(lbl,multi);
-        const vaClean=va.replace('คงจำคุกมีกำหนด','').trim();
+        // มีจำคุก → "ฐาน... คงจำคุก[ใคร][มีกำหนด] X [และปรับ Y]"
+        const sfx=multi?lbl+'คนละ ':N===1?' ':lbl+mkJsfx(lbl,false);
+        const vaClean=va.replace('คงจำคุก','').trim();
         ps=(skipFhanPrefix?'':'ฐาน'+c.label+' ')+'คงจำคุก'+sfx+vaClean;
       } else {
         // ปรับอย่างเดียว
@@ -26246,8 +26250,7 @@ function buildText(){
     if(allSameTot&&(defTotals[0].ty>0||defTotals[0].tm>0||defTotals[0].td>0)){
       // ทุกจำเลยโทษเท่ากันหมด — รวมบรรทัดเดียว
       const {ty,tm,td,tf}=defTotals[0];
-      const lblAll=grpLbl(defs);
-      let rs='รวมจำคุก'+lblAll+mkJsfx(lblAll,true)+(fmtUTSplit(ty,tm,td)||'___');
+      let rs='รวมจำคุก'+grpLbl(defs)+'คนละ '+(fmtUTSplit(ty,tm,td)||'___');
       if(tf>0) rs+=' และปรับ'+grpLbl(defs)+'คนละ '+thMoney(Math.round(tf*100)/100)+' บาท';
       lines.push(rs);
     } else {
@@ -26265,8 +26268,9 @@ function buildText(){
         sameGroup.forEach(x=>usedDefs.add(x.d));
         const groupDefs=sameGroup.map(x=>x.d);
         const lbl=grpLbl(groupDefs);
-        const sfx=mkJsfx(lbl,groupDefs.length>1);
-        let rs='รวมจำคุก'+lbl+sfx+(fmtUTSplit(dt.ty,dt.tm,dt.td)||'___');
+        const multi_rt=groupDefs.length>1;
+        const sfx=multi_rt?lbl+'คนละ ':N===1?' ':lbl+mkJsfx(lbl,false);
+        let rs='รวมจำคุก'+sfx+(fmtUTSplit(dt.ty,dt.tm,dt.td)||'___');
         const fineSfx=groupDefs.length>1?'คนละ ':'';
         if(dt.tf>0) rs+=' และปรับ'+fineSfx+thMoney(Math.round(dt.tf*100)/100)+' บาท';
         lines.push(rs);
@@ -26304,7 +26308,7 @@ function buildText(){
     // Step 2: push แต่ละกลุ่ม — replace ชื่อจำเลยด้วย grpLbl ของกลุ่ม
     condGroups.forEach(({defGroup,srcLines})=>{
       const lbl=grpLbl(defGroup);
-      srcLines.map(t=>t.replace(/จำเลยที่\s*[๑๒๓]/g,lbl).replace(/จำเลย(?!ที่)/g,lbl))
+      srcLines.map(t=>t.replace(/จำเลยที่\s*[๑๒๓]/g,lbl).replace(/จำเลย(?!ที่|ทั้ง)/g,lbl))
         .forEach(t=>lines.push(t));
     });
 
@@ -26355,9 +26359,9 @@ function buildText(){
       if(naftDismiss){
         const hasRdef4=document.getElementById('sc_rdef_d'+d)?.checked;
         const rototype=hasRdef4?'รอการกำหนดโทษ':'รอการลงโทษ';
-        lines.push('ส่วนที่โจทก์ขอให้นับโทษ'+nm2+' ต่อจากคดีอื่น เนื่องจากคดีนี้ศาล'+rototype+' จึงให้ยกคำขอในส่วนนี้');
+        lines.push('ส่วนที่โจทก์ขอให้นับโทษ'+nms(nm2)+'ต่อจากคดีอื่น เนื่องจากคดีนี้ศาล'+rototype+' จึงให้ยกคำขอในส่วนนี้');
       } else {
-        lines.push('นับโทษจำคุกของ'+nm2+' ในคดีนี้ต่อจากโทษในคดีอาญาหมายเลขแดงที่ '+(val2('an'+d)||'___')+' ของศาล '+(val2('act'+d)||'___'));
+        lines.push('นับโทษจำคุกของ'+nms(nm2)+'ในคดีนี้ต่อจากโทษในคดีอาญาหมายเลขแดงที่ '+(val2('an'+d)||'___')+' ของศาล '+(val2('act'+d)||'___'));
       }
     }
   });
@@ -26410,6 +26414,118 @@ function togglePreview(){
   b.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
+
+// ═══ OTHER CHARGE HISTORY ════════════════════════════════
+const OCH_KEY = 'otherChargeHistory';
+
+function ochLoad() {
+  try { const r=localStorage.getItem(OCH_KEY); return r?JSON.parse(r):[]; }
+  catch { return []; }
+}
+function ochSave(list) {
+  try { localStorage.setItem(OCH_KEY, JSON.stringify(list)); } catch{}
+}
+function ochAdd(entry) {
+  if(!entry.label||!entry.matra) return {ok:false,reason:'label/matra ว่าง'};
+  const list=ochLoad();
+  if(list.find(x=>x.matra===entry.matra&&x.label===entry.label)) return {ok:false,reason:'มีอยู่แล้ว'};
+  list.push({...entry, savedAt:Date.now()});
+  ochSave(list);
+  return {ok:true,total:list.length};
+}
+function ochDelete(idx) {
+  const list=ochLoad();
+  if(idx<0||idx>=list.length) return {ok:false};
+  list.splice(idx,1);
+  ochSave(list);
+  return {ok:true};
+}
+
+function ochOpenPanel() {
+  let modal=document.getElementById('ochModal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='ochModal';
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    modal.innerHTML=`
+      <div style="background:#fff;border-radius:10px;width:min(95vw,560px);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.25);">
+        <div style="padding:14px 16px 10px;border-bottom:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-weight:700;font-size:14px;color:#1565c0;">📋 ฐานความผิดที่เคยบันทึก</span>
+          <button onclick="document.getElementById('ochModal').style.display='none'" style="border:none;background:none;font-size:18px;cursor:pointer;color:#888;line-height:1;">✕</button>
+        </div>
+        <div id="ochList" style="overflow-y:auto;flex:1;padding:10px 14px;"></div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+  modal.style.display='flex';
+  ochRenderList();
+}
+
+function ochRenderList() {
+  const el=document.getElementById('ochList'); if(!el) return;
+  const list=ochLoad();
+  if(!list.length){
+    el.innerHTML='<div style="color:#aaa;text-align:center;padding:24px 0;font-size:13px;">ยังไม่มีรายการที่บันทึกไว้</div>';
+    return;
+  }
+  el.innerHTML=list.map((e,i)=>`
+    <div style="border:1px solid #e3e8f0;border-radius:6px;padding:8px 10px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:13px;color:#1a237e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e.label}</div>
+        <div style="font-size:11px;color:#666;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e.matra}</div>
+      </div>
+      <div style="display:flex;gap:5px;flex-shrink:0;">
+        <button onclick="ochSelect(${i})" style="border:1px solid #1565c0;background:#e3f2fd;color:#1565c0;border-radius:4px;padding:3px 10px;font-size:12px;cursor:pointer;white-space:nowrap;">เลือก</button>
+        <button onclick="ochRemoveAndRefresh(${i})" style="border:1px solid #c62828;background:#ffebee;color:#c62828;border-radius:4px;padding:3px 8px;font-size:12px;cursor:pointer;">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+function ochRemoveAndRefresh(idx) {
+  ochDelete(idx);
+  ochRenderList();
+}
+
+function ochSelect(idx) {
+  const list=ochLoad();
+  const entry=list[idx]; if(!entry) return;
+  const id='oth'+Date.now();
+  otherCharges.push({id, label:'', matra:''});
+  buildCtbl();
+  updateVis();
+  const setVal=(elId,val)=>{ const el=document.getElementById(elId); if(el) el.value=val||''; };
+  const typeEl=document.getElementById('ol_type_'+id);
+  if(typeEl){ typeEl.value=entry.lawType||''; updOtherLawType(id); }
+  setVal('ol_'+id, entry.lawName||'');
+  setVal('oa_'+id, entry.article||'');
+  setVal('op_'+id, entry.paragraph||'');
+  setVal('on_'+id, entry.label);
+  updateOtherChargeFull(id);
+  const modal=document.getElementById('ochModal');
+  if(modal) modal.style.display='none';
+  showToast('เพิ่มฐาน "'+entry.label+'" แล้ว');
+}
+
+function ochSaveRow(id) {
+  const oc=otherCharges.find(c=>c.id===id);
+  if(!oc||!oc.label||!oc.matra){ showToast('⚠ กรอกชื่อฐานและมาตราก่อนบันทึก'); return; }
+  const typeEl=document.getElementById('ol_type_'+id);
+  const lawNameEl=document.getElementById('ol_'+id);
+  const articleEl=document.getElementById('oa_'+id);
+  const paraEl=document.getElementById('op_'+id);
+  const entry={
+    label: oc.label,
+    matra: oc.matra,
+    lawType: typeEl?typeEl.value:'',
+    lawName: lawNameEl?lawNameEl.value:'',
+    article: articleEl?articleEl.value:'',
+    paragraph: paraEl?paraEl.value:''
+  };
+  const result=ochAdd(entry);
+  if(result.ok) showToast('💾 บันทึก "'+oc.label+'" แล้ว (รวม '+result.total+' รายการ)');
+  else showToast('⚠ '+result.reason);
+}
+
 // ═══ PRINT ══════════════════════════════════════════════
 function doPrint(){
   const cn=gV('caseNum')||'___', cd=gV('caseDate')||'___';
@@ -26447,7 +26563,13 @@ async function exportDocx(){
       showToast('⚠ ยังไม่ได้เลือกฐานความผิดหรือกรอกข้อมูล');
       return;
     }
-    lines.forEach(t=>ch.push(P([R('    '+String(t||''))],true)));
+    // รวมทุกบรรทัดเป็น TextRun ใน paragraph เดียว คั่นด้วย space
+    const bodyRuns=[];
+    lines.forEach((t,i)=>{
+      if(i>0) bodyRuns.push(R(' '));
+      bodyRuns.push(R('    '+String(t||'')));
+    });
+    ch.push(P(bodyRuns,true));
     ch.push(new Paragraph({children:[],spacing:{after:400}}));
     ch.push(new Paragraph({
       children:[
@@ -26570,6 +26692,7 @@ function clearAll(){
   buildCCards();
   document.getElementById('prevbox').classList.remove('open');
   showToast('ล้างข้อมูลแล้ว');
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 
 // ═══ INIT ═══════════════════════════════════════════════
