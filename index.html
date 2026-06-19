@@ -25456,7 +25456,7 @@ function getCondLines(d, defTotals){
   if(ccCk('nofn')) out.push(nms(nm)+'ไม่ชำระค่าปรับให้จัดการตามประมวลกฎหมายอาญา มาตรา ๒๙, ๓๐');
   if(ccCk('detfn1')) out.push('หากต้องกักขังแทนค่าปรับให้กักขัง'+nms(nm)+'ไม่เกิน ๑ ปี');
   if(ccCk('detfn')) out.push('หากต้องกักขังแทนค่าปรับให้กักขัง'+nms(nm)+'เกิน ๑ ปี แต่ไม่เกิน ๒ ปี');
-  if(ck('othe')&&val('oo'+d)) out.push(val('oo'+d));
+  // othe ย้ายไปจัดการใน buildText หลังริบของกลาง ก่อน naft
   return out;
 }
 
@@ -26349,7 +26349,7 @@ function buildText(){
     lines.push(item?'ริบ '+item+' ของกลาง':'ริบของกลาง');
   }
 
-  // ── ๑๐. นับโทษต่อ — ปิดท้าย preview เสมอ (หลังริบของกลาง) ──
+  // ── ๑๐. นับโทษต่อ — ก่อนยกคำขออื่น ──
   defs.forEach(d=>{
     const ck2=id=>document.getElementById('ck_'+id+'_'+d)?.checked;
     const val2=id=>document.getElementById(id)?.value||'';
@@ -26364,6 +26364,13 @@ function buildText(){
         lines.push('นับโทษจำคุกของ'+nms(nm2)+'ในคดีนี้ต่อจากโทษในคดีอาญาหมายเลขแดงที่ '+(val2('an'+d)||'___')+' ของศาล '+(val2('act'+d)||'___'));
       }
     }
+  });
+
+  // ── ๑๑. ยกฟ้อง/ยกคำขออื่น — ปิดท้าย preview เสมอ ──
+  defs.forEach(d=>{
+    const ck3=id=>document.getElementById('ck_'+id+'_'+d)?.checked;
+    const val3=id=>document.getElementById(id)?.value||'';
+    if(ck3('othe')&&val3('oo'+d)) lines.push(val3('oo'+d));
   });
 
   // ── post-process: fix spacing ──────────────────────────
