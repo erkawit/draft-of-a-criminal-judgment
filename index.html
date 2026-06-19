@@ -26570,13 +26570,10 @@ async function exportDocx(){
       showToast('⚠ ยังไม่ได้เลือกฐานความผิดหรือกรอกข้อมูล');
       return;
     }
-    // รวมทุกบรรทัดเป็น TextRun ใน paragraph เดียว คั่นด้วย space
-    const bodyRuns=[];
-    lines.forEach((t,i)=>{
-      if(i>0) bodyRuns.push(R(' '));
-      bodyRuns.push(R('    '+String(t||'')));
+    // แยกแต่ละบรรทัดเป็น Paragraph ของตัวเอง — เยื้องหน้าเหมือนกันทุกบรรทัดตามสไตล์คำพิพากษาไทย
+    lines.forEach(t=>{
+      ch.push(P([R(String(t||''))],true));
     });
-    ch.push(P(bodyRuns,true));
     ch.push(new Paragraph({children:[],spacing:{after:400}}));
     ch.push(new Paragraph({
       children:[
