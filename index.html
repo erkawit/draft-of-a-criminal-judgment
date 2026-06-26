@@ -23271,7 +23271,12 @@ main{max-width:1280px;margin:0 auto;padding:20px 16px 60px;}
         <button class="db" id="db3" onclick="setN(3)">๓</button>
       </div>
     </div>
-    <div class="field"><label>หมายเหตุ</label><input type="text" id="note" placeholder="(ถ้ามี)"></div>
+
+  </div>
+  <div class="row" style="margin-top:6px;">
+    <div class="field"><label>ชื่อจำเลยที่ ๑</label><div style="display:flex;gap:4px;"><select id="defTitle1" style="font-size:13px;padding:3px 4px;border:1px solid #d1d5db;border-radius:6px;background:#fff;min-width:0;width:auto;"><option value="">—</option><option>นาย</option><option>นาง</option><option>นางสาว</option></select><input type="text" id="defName1" placeholder="ชื่อ-นามสกุล (ถ้ามี)" style="flex:1"></div></div>
+    <div class="field"><label>ชื่อจำเลยที่ ๒</label><div style="display:flex;gap:4px;"><select id="defTitle2" style="font-size:13px;padding:3px 4px;border:1px solid #d1d5db;border-radius:6px;background:#fff;min-width:0;width:auto;"><option value="">—</option><option>นาย</option><option>นาง</option><option>นางสาว</option></select><input type="text" id="defName2" placeholder="ชื่อ-นามสกุล (ถ้ามี)" style="flex:1"></div></div>
+    <div class="field"><label>ชื่อจำเลยที่ ๓</label><div style="display:flex;gap:4px;"><select id="defTitle3" style="font-size:13px;padding:3px 4px;border:1px solid #d1d5db;border-radius:6px;background:#fff;min-width:0;width:auto;"><option value="">—</option><option>นาย</option><option>นาง</option><option>นางสาว</option></select><input type="text" id="defName3" placeholder="ชื่อ-นามสกุล (ถ้ามี)" style="flex:1"></div></div>
   </div>
 </div>
 
@@ -23563,6 +23568,20 @@ function defsOf(cid){ return actDefs().filter(d=>{ const e=document.getElementBy
 
 function showToast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2600); }
 
+// ชื่อจำเลย — คืน array บรรทัด เช่น ["นายก ข ค  จำเลยที่ ๑"]
+function getDefNameLines(){
+  const gl=n=>n===1?'๑':n===2?'๒':'๓';
+  const lines=[];
+  [1,2,3].forEach(d=>{
+    const title=(document.getElementById('defTitle'+d)?.value||'').trim();
+    const name=(gV('defName'+d)||'').trim();
+    if(name){
+      const full=(title?title+' ':'')+name;
+      lines.push(full+'  จำเลยที่ '+gl(d));
+    }
+  });
+  return lines;
+}
 function updateThaiDate(){
   const raw=gV('caseDateRaw');
   if(!raw){document.getElementById('caseDate').value='';return;}
@@ -25372,6 +25391,8 @@ function updatePreview(){
   const raw=(sentMode==='rdef')?buildRdefLines():buildText();
   const lines=Array.isArray(raw)?raw:(raw?raw.split('\n').filter(Boolean):[]);
   let h='<h2>ร่างคำพิพากษา</h2><div class="meta">คดีหมายเลขดำที่ '+cn+' | วันที่ '+cd+'</div>';
+  const defNames=getDefNameLines();
+  if(defNames.length) h+='<div class="meta" style="margin-top:2px;">'+defNames.join('<br>')+'</div>';
   if(!lines.length) h+='<p style="color:#aaa;">— ยังไม่ได้เลือกฐานความผิด —</p>';
   else lines.forEach(t=>{h+='<p>'+t+'</p>';});
   b.innerHTML=h;
@@ -25400,7 +25421,7 @@ function getCondLines(d, defTotals){
   if(scCk('roto')){
     const y=num('rp_sh');
     let rotoline='ไม่ปรากฏว่า'+nms(nm)+'เคยต้องโทษจำคุกมาก่อน เห็นสมควรให้โอกาสกลับตนเป็นพลเมืองดี โทษจำคุกให้รอการลงโทษไว้มีกำหนด '+th(y)+' ปี';
-    if(scCk('roto_prob')){
+    if(document.getElementById('ck_roto_prob')?.checked){
       const cp_v=num('rcp_sh'), t=num('rt_sh');
       rotoline+=' ให้คุมความประพฤติ'+nms(nm)+'เป็นเวลา '+th(cp_v)+' ปี ให้'+nms(nm)+'ไปรายงานตัวต่อพนักงานคุมประพฤติปีละ '+th(t)+' ครั้ง ตามเงื่อนไขและระยะเวลาที่พนักงานคุมประพฤติกำหนด';
     }
@@ -26407,6 +26428,8 @@ function togglePreview(){
   }
   const lines=Array.isArray(raw)?raw:(raw?raw.split('\n').filter(Boolean):[]);
   let h='<h2>ร่างคำพิพากษา</h2><div class="meta">คดีหมายเลขดำที่ '+cn+' | วันที่ '+cd+'</div>';
+  const defNames=getDefNameLines();
+  if(defNames.length) h+='<div class="meta" style="margin-top:2px;">'+defNames.join('<br>')+'</div>';
   if(!lines.length) h+='<p style="color:#aaa;">— ยังไม่ได้เลือกฐานความผิด —</p>';
   else lines.forEach(t=>{h+='<p>'+t+'</p>';});
   b.innerHTML=h;
@@ -26445,6 +26468,7 @@ async function exportDocx(){
     const ch=[];
     ch.push(P([R('คำพิพากษา',true,36)],false,true));
     ch.push(P([R('คดีหมายเลขดำที่  '+cn+'    วันที่  '+cd,false,28)],false,true));
+    getDefNameLines().forEach(line=>ch.push(P([R(line,false,17)],false,true)));
     ch.push(new Paragraph({children:[],spacing:{after:160}}));
     const _rawW=(typeof sentMode!=='undefined'&&sentMode==='rdef')?buildRdefLines():buildText(); const textResult=Array.isArray(_rawW)?_rawW:(_rawW?_rawW.split('\n').filter(Boolean):[]);
     const lines=Array.isArray(textResult)?textResult:(textResult?[textResult]:[]);
@@ -26502,6 +26526,8 @@ function resetInputs(){
     const el=document.getElementById(id); if(el) el.value='';
   });
   const rotoprob=document.getElementById('ck_roto_prob'); if(rotoprob) rotoprob.checked=false;
+  ['defName1','defName2','defName3'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['defTitle1','defTitle2','defTitle3'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const ci=document.getElementById('ci_sh'); if(ci) ci.value='';
   const confItem=document.getElementById('conf_item'); if(confItem) confItem.value='';
 }
