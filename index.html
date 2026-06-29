@@ -23645,7 +23645,7 @@ function renderAddpCases(d){
         '<input class="cii w" type="text" placeholder="หมายเลข" id="addpNo_'+d+'_'+i+'" value="'+(c.caseNo||'')+'"'+
           ' oninput="addpCases['+(d-1)+']['+(i)+'].caseNo=this.value">'+
         '<span style="font-size:12px;">ศาล</span>'+
-        '<input class="cii w" type="text" placeholder="ชื่อศาล" id="addpCt_'+d+'_'+i+'" value="'+(c.court||'')+'"'+
+        '<span style="font-size:12px;">ศาล</span><input class="cii w" type="text" placeholder="ชื่อศาล" id="addpCt_'+d+'_'+i+'" value="'+(c.court||'')+'"'+
           ' oninput="addpCases['+(d-1)+']['+(i)+'].court=this.value">'+
       '</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;">'+
@@ -23713,6 +23713,87 @@ function updateOtherChargeFull(id){
 }
 
 
+// ═══ OTHER CHARGE HISTORY (OCH) ═══════════════════════
+const OCH_KEY='otherChargeHistory';
+function ochLoad(){try{const r=localStorage.getItem(OCH_KEY);return r?JSON.parse(r):[];}catch(e){return[];}}
+function ochSave(list){try{localStorage.setItem(OCH_KEY,JSON.stringify(list));}catch{}}
+function ochAdd(entry){
+  if(!entry.label||!entry.matra) return{ok:false,reason:'label/matra ว่าง'};
+  const list=ochLoad();
+  if(list.find(x=>x.matra===entry.matra&&x.label===entry.label)) return{ok:false,reason:'มีอยู่แล้ว'};
+  list.push({...entry,savedAt:Date.now()});
+  ochSave(list);
+  return{ok:true,total:list.length};
+}
+function ochDelete(idx){
+  const list=ochLoad();
+  if(idx<0||idx>=list.length) return{ok:false};
+  list.splice(idx,1);
+  ochSave(list);
+  ochRenderModal();
+}
+function ochSaveFromRow(id){
+  const oc=otherCharges.find(c=>c.id===id);
+  if(!oc||!oc.label||!oc.matra){showToast('⚠ กรอกชื่อฐานและมาตราก่อนบันทึก');return;}
+  const typeEl=document.getElementById('ol_type_'+id);
+  const entry={
+    label:oc.label, matra:oc.matra,
+    lawType:typeEl?typeEl.value:'',
+    lawName:(document.getElementById('ol_'+id)?.value||'').trim(),
+    article:(document.getElementById('oa_'+id)?.value||'').trim(),
+    paragraph:(document.getElementById('op_'+id)?.value||'').trim()
+  };
+  const r=ochAdd(entry);
+  showToast(r.ok?'💾 บันทึกแล้ว ('+r.total+' รายการ)':'⚠ '+r.reason);
+}
+function ochSelectEntry(entry){
+  const id='oth'+Date.now();
+  otherCharges.push({id,label:entry.label||'',matra:entry.matra||''});
+  buildCtbl();
+  updateVis();
+  // populate fields
+  const setV=(eid,v)=>{const el=document.getElementById(eid);if(el)el.value=v||'';};
+  setV('on_'+id, entry.label);
+  setV('ol_'+id, entry.lawName);
+  setV('oa_'+id, entry.article);
+  setV('op_'+id, entry.paragraph);
+  const typeEl=document.getElementById('ol_type_'+id);
+  if(typeEl&&entry.lawType) typeEl.value=entry.lawType;
+  updateOtherChargeFull(id);
+  document.getElementById('ochModal').style.display='none';
+  showToast('เพิ่มฐาน: '+entry.label);
+}
+function ochRenderModal(){
+  const list=ochLoad();
+  const body=document.getElementById('ochList');
+  if(!body) return;
+  if(!list.length){body.innerHTML='<div style="color:#aaa;text-align:center;padding:20px;font-size:14px;">ยังไม่มีรายการที่บันทึกไว้</div>';return;}
+  body.innerHTML='';
+  list.forEach((e,i)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #f0f0f0;';
+    const selBtn=document.createElement('button');
+    selBtn.style.cssText='border:none;background:#e3f2fd;color:#1565c0;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;white-space:nowrap;';
+    selBtn.textContent='เลือก';
+    selBtn.onclick=(function(entry){return function(){ochSelectEntry(entry);};})(e);
+    const delBtn=document.createElement('button');
+    delBtn.style.cssText='border:none;background:#ffebee;color:#c62828;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;';
+    delBtn.textContent='🗑';
+    delBtn.onclick=(function(idx){return function(){ochDelete(idx);};})(i);
+    const info=document.createElement('div');
+    info.style.cssText='flex:1;';
+    info.innerHTML='<div style="font-size:14px;font-weight:600;color:#1B2A4A;">'+e.label+'</div>'+
+      '<div style="font-size:11px;color:#888;">'+e.matra+'</div>';
+    row.appendChild(info);
+    row.appendChild(selBtn);
+    row.appendChild(delBtn);
+    body.appendChild(row);
+  });
+}
+function ochOpenModal(){ochRenderModal();document.getElementById('ochModal').style.display='flex';}
+function ochCloseModal(){document.getElementById('ochModal').style.display='none';}
+
+// ═══ BUILD CTBL ═════════════════════════════════════════
 function buildCtbl(){
   const tb=document.getElementById('ctbody');
   tb.innerHTML='';
@@ -23756,6 +23837,7 @@ function buildCtbl(){
           <input type="text" id="op_${oc.id}" placeholder="วรรค"
             style="width:50px;border:1px solid #ccc;border-radius:4px;padding:3px 6px;font-size:11px;"
             oninput="updateOtherChargeFull('${oc.id}')">
+          <button onclick="ochSaveFromRow('${oc.id}')" title="บันทึกฐานนี้" style="border:none;background:#e8f5e9;color:#2e7d32;border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;">💾</button>
           <button onclick="removeOtherCharge('${oc.id}')" style="border:none;background:#ffebee;color:#c62828;border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;">✕</button>
         </div>
         <span class="m" id="opreview_${oc.id}" style="font-style:italic;color:#888;font-size:10px;">${oc.matra||'— กรอกข้อมูล —'}</span>
@@ -23777,6 +23859,12 @@ function buildCtbl(){
     btn.textContent='+ เพิ่มกฎหมายอื่น / ฐานอื่น';
     btn.onclick=addOtherCharge;
     btnRow.appendChild(btn);
+    const btn2=document.createElement('button');
+    btn2.className='add-grp';
+    btn2.style.cssText='border-color:#6a1b9a;color:#6a1b9a;font-size:12px;margin-left:6px;';
+    btn2.textContent='📋 ฐานที่เคยบันทึก';
+    btn2.onclick=ochOpenModal;
+    btnRow.appendChild(btn2);
   }
 }
 
@@ -23818,6 +23906,9 @@ function updateVis(){
     ['m90di','m91di'].forEach(p=>{
       const e=document.getElementById(p+d); if(e) e.classList.toggle('hide',!show);
     });
+    // retn per-def row
+    const retnRow=document.getElementById('retn_row_'+d); if(retnRow) retnRow.style.display=show?'':'none';
+    const retnLabel=document.getElementById('retn_label_'+d); if(retnLabel) retnLabel.style.display=show?'':'none';
     // penalty & cond cards
     const pc=document.getElementById('pc'+d); if(pc) pc.classList.toggle('hide',!show);
     const cc=document.getElementById('cc'+d); if(cc) cc.classList.toggle('hide',!show);
@@ -23886,6 +23977,7 @@ function onLaw(d,law,on){
     else if(lawMode[d-1]==='m90') lawMode[d-1]='none';
     const det=document.getElementById('m90det'+d); if(det) det.classList.toggle('open',on);
     if(on) rebuildM90det(d);
+    rebuildM83();
   } else {
     // ม.๙๑ ถูกจัดการใน onM91 แยก ไม่ต้องทำอะไรตรงนี้
   }
@@ -23935,7 +24027,7 @@ function rebuildM90det(d){
       hs.appendChild(o);
     });
     // ไม่ set grp.heavy จาก hs.value — state อยู่ใน m90groups[d-1][gi].heavy แล้ว
-    hs.onchange=(function(gi){ return function(){ m90groups[d-1][gi].heavy=this.value; rebuildPen(d); }; })(gi);
+    hs.onchange=(function(gi){ return function(){ m90groups[d-1][gi].heavy=this.value; rebuildPen(d); rebuildM83(); }; })(gi);
     box.appendChild(hs);
     cont.appendChild(box);
   });
@@ -23946,7 +24038,7 @@ function rebuildM90det(d){
 
 function onPair(d,gi,cid,on){
   if(on) m90groups[d-1][gi].ids.add(cid); else m90groups[d-1][gi].ids.delete(cid);
-  rebuildM90det(d); rebuildPen(d);
+  rebuildM90det(d); rebuildPen(d); rebuildM83();
 }
 
 // onPair(d,gi,cid,on) is defined in rebuildM90det section above
@@ -23961,11 +24053,13 @@ function rebuildM83(){
   // dim และ heavy ของ m90 → ไม่แสดงใน ม.๘๓
   // (heavy render ผ่าน m90 declaration แล้ว, dim ไม่มีโทษ)
   const dimSet=new Set();
-  m83m90.forEach(grp=>grp.ids.forEach(id=>{ dimSet.add(id); })); // ทั้ง heavy และ dim
+  m83m90.forEach(grp=>grp.ids.forEach(id=>{ dimSet.add(id); })); // ทั้ง heavy และ dim ของ m83m90
   defs.forEach(d=>{
-    (m90groups[d-1]||[]).forEach(grp=>grp.ids.forEach(id=>{
-      dimSet.add(id); // ทั้ง heavy และ dim ของ individual m90
-    }));
+    (m90groups[d-1]||[]).forEach(grp=>{
+      // กรองเฉพาะ dim (ไม่ใช่ heavy) ของ m90 individual ออกจาก m83 table
+      if(!grp.heavy||grp.heavy==='') return;
+      grp.ids.forEach(id=>{ if(id!==grp.heavy) dimSet.add(id); });
+    });
   });
 
   // เฉพาะ charges ที่มีอย่างน้อย 1 def ติ๊กไว้ และไม่ใช่ dim
@@ -24071,7 +24165,7 @@ function buildM83M90(){
       inp.onchange=(function(gi,cid){return function(){
         if(this.checked) m83m90[gi].ids.add(cid);
         else m83m90[gi].ids.delete(cid);
-        buildM83M90(); rebuildM83Pen();
+        buildM83M90(); rebuildM83(); rebuildM83Pen();
       };})(gi,c.id);
       lbl.appendChild(inp); lbl.appendChild(document.createTextNode(' '+c.label));
       pg.appendChild(lbl);
@@ -24089,7 +24183,7 @@ function buildM83M90(){
     });
     // ไม่ set grp.heavy จาก hs.value เพราะ DOM ยังไม่ได้ append → value อาจเป็น ""
     // state อยู่ใน m83m90[gi].heavy แล้ว ไม่ต้องเขียนทับ
-    hs.onchange=(function(gi){return function(){m83m90[gi].heavy=this.value;buildM83M90();rebuildM83Pen();};})(gi);
+    hs.onchange=(function(gi){return function(){m83m90[gi].heavy=this.value;buildM83M90();rebuildM83();rebuildM83Pen();};})(gi);
     box2.appendChild(hs);
 
     // แสดง heavy charge ที่เลือก + บอกว่าโทษใช้จากตารางด้านบน
@@ -25053,14 +25147,14 @@ function plineBase(c,d,multiDef){
   // Isolated: แสดง y/m/d โดยตรง ไม่ normalize ผ่าน days
   const oneJp=fmtYMD(v.y, v.m, v.dv); // per กระทง
   const rawJp=fmtYMD(v.y*ct, v.m*ct, v.dv*ct); // รวมทุกกระทง (บวกแยกหน่วย)
-  const kl=multiDef?' คนละ ':' ';
+  const kl=multiDef?'คนละ ':' ';
   let s='';
   if(ct>1){
     if(oneJp&&oneJp!=='—') s='จำคุก'+kl+oneJp;
-    if(v.f>0&&ct>0) s+=(s?' และปรับ':'ปรับ')+(multiDef?'คนละ ':' ')+thMoney(Math.floor(v.f/ct))+' บาท';
+    if(v.f>0) s+=(s?' และปรับ':'ปรับ')+(multiDef?'คนละ ':' ')+thMoney(v.f)+' บาท';
     s+=' จำเลยกระทำความผิดฐานนี้ รวม '+th(ct)+' กระทง';
     if(rawJp&&rawJp!=='—') s+=' เป็นจำคุก'+kl+rawJp;
-    if(v.f>0) s+=(s?' และปรับ':' ปรับ')+(multiDef?'คนละ ':' ')+thMoney(v.f)+' บาท';
+    if(v.f>0) s+=(s?' และปรับ':' ปรับ')+(multiDef?'คนละ ':' ')+thMoney(v.f*ct)+' บาท';
   } else {
     if(rawJp&&rawJp!=='—') s='จำคุก'+kl+rawJp;
     if(v.f>0) s+=(s?' และปรับ'+(multiDef?'คนละ ':' '):'ปรับ'+(multiDef?'คนละ ':' '))+thMoney(v.f)+' บาท';
@@ -25082,10 +25176,10 @@ function plineBaseOnly(c,d){
   let s='';
   if(ct>1){
     if(oneJp) s='จำคุก '+oneJp;
-    if(v.f>0&&ct>0) s+=(s?' และปรับ ':' ปรับ ')+thMoney(Math.floor(v.f/ct))+' บาท';
+    if(v.f>0) s+=(s?' และปรับ ':' ปรับ ')+thMoney(v.f)+' บาท';
     s+=' จำเลยกระทำความผิดฐานนี้ รวม '+th(ct)+' กระทง';
     if(rawJp) s+=' เป็นจำคุก '+rawJp;
-    if(v.f>0) s+=(s?' และปรับ ':' ปรับ ')+thMoney(v.f)+' บาท';
+    if(v.f>0) s+=(s?' และปรับ ':' ปรับ ')+thMoney(v.f*ct)+' บาท';
   } else {
     if(rawJp) s='จำคุก '+rawJp;
     if(v.f>0) s+=(s?' และปรับ ':' ปรับ ')+thMoney(v.f)+' บาท';
@@ -25279,6 +25373,23 @@ function buildBox7Fine(){
     '<label for="conf_single" style="font-size:13px;cursor:pointer;">ริบของกลาง</label>'+
     '<input class="cii" style="width:240px;margin-left:8px;" type="text" placeholder="รายการของกลาง (เว้นว่างถ้าไม่ระบุ)" id="conf_item">';
   c.appendChild(confDiv);
+
+  // คืนทรัพย์
+  const retnDiv=document.createElement('div');
+  retnDiv.style.cssText='border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:#fafafa;margin-top:6px;';
+  let retnHtml=
+    '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:6px;">'+
+    '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" id="retn_d1" style="accent-color:var(--navy);width:13px;height:13px;"> จำเลยที่ ๑</label>'+
+    '<label id="retn_label_2" style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;'+(N<2?'display:none':'')+'\"><input type="checkbox" id="retn_d2" style="accent-color:var(--navy);width:13px;height:13px;"> จำเลยที่ ๒</label>'+
+    '<label id="retn_label_3" style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;'+(N<3?'display:none':'')+'\"><input type="checkbox" id="retn_d3" style="accent-color:var(--navy);width:13px;height:13px;"> จำเลยที่ ๓</label>'+
+    '</div>'+
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;">'+
+    '<span>ให้จำเลยคืนหรือใช้ราคาทรัพย์</span>'+
+    '<input class="cii" style="width:200px;" type="text" placeholder="ระบุรายละเอียด" id="retn_val">'+
+    '<span>แก่ผู้เสียหาย</span>'+
+    '</div>';
+  retnDiv.innerHTML=retnHtml;
+  c.appendChild(retnDiv);
 }
 
 // ── กล่อง ⑧: นับโทษต่อ + คำขออื่น ──────────────────────
@@ -25292,11 +25403,9 @@ function buildBox8Consec(){
     card.innerHTML='<h3>เงื่อนไขเฉพาะจำเลย — '+names[d-1]+'</h3><div class="cgrid">'+
       citem(d,'naft','นับโทษต่อจากคดีอาญาหมายเลข',
         '<input class="cii w" type="text" placeholder="หมายแดง" id="an'+d+'">'+
-        '<input class="cii w" type="text" placeholder="ศาล" id="act'+d+'">'+
-        '<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;margin-left:4px;">'+
-          '<input type="checkbox" id="naft_dismiss_'+d+'" style="accent-color:#c62828;width:13px;height:13px;"> ยกคำขอ'+
-        '</label>')+
+        '<span style="font-size:12px">ศาล</span><input class="cii w" type="text" placeholder="ชื่อศาล" id="act'+d+'">')+
       citem(d,'othe','คำขออื่น / ยกฟ้องบางส่วน','<input class="cii" style="width:220px" type="text" placeholder="ระบุ" id="oo'+d+'">')+
+      citem(d,'yrq','ส่วนที่โจทก์ขอให้...ยกคำขอ','ส่วนที่โจทก์ขอให้ <input class="cii" style="width:160px" type="text" placeholder="ระบุ" id="yrq1_'+d+'"> นั้น เนื่องจากศาล <input class="cii" style="width:140px" type="text" placeholder="ระบุ" id="yrq2_'+d+'"> จึงให้ยกคำขอในส่วนนี้')+
     '</div>';
     c.appendChild(card);
   });
@@ -25406,6 +25515,12 @@ function ck(id,d){ return document.getElementById('ck_'+id+'_'+d)?.checked; }
 
 // nms: nm + smart space — ถ้าลงท้ายตัวเลขใส่ space ถ้าลงท้ายตัวอักษรไม่ใส่
 function nms(s){ return /[๐-๙0-9]$/.test((s||'').trim())? s+' ' : s; }
+// mkJsfx: suffix ระหว่างชื่อจำเลยกับตัวเลขโทษ
+function mkJsfx(lbl,multi){
+  const needsMk=/[๐-๙0-9]$/.test((lbl||'').trim());
+  if(multi) return needsMk?' มีกำหนดคนละ ':'คนละ ';
+  return needsMk?' มีกำหนด ':' ';
+}
 function getCondLines(d, defTotals){
   const out=[];
   const ck=id=>document.getElementById('ck_'+id+'_'+d)?.checked;
@@ -25454,7 +25569,7 @@ function getCondLines(d, defTotals){
         if(!py&&!pm&&!pdv) return;
         const caseNo=c.caseNo||'___', court=c.court||'___';
         const prevStr=fmtUTSplit(py,pm,pdv);
-        addpParts.push('บวกโทษจำคุก '+prevStr+' ของ'+nms(nm.trim())+'ที่รอการลงโทษไว้ในคดีอาญาหมายเลขแดงที่ '+caseNo+' ของ '+court+' เข้ากับโทษในคดีนี้ ตามประมวลกฎหมายอาญา มาตรา ๕๘');
+        addpParts.push('บวกโทษจำคุก '+prevStr+' ของ'+nms(nm.trim())+'ที่รอการลงโทษไว้ในคดีอาญาหมายเลขแดงที่ '+caseNo+' ของศาล'+court+' เข้ากับโทษในคดีนี้ ตามประมวลกฎหมายอาญา มาตรา ๕๘');
         totalPrevY+=py; totalPrevM+=pm; totalPrevDv+=pdv;
       });
       if(addpParts.length>0){
@@ -25464,7 +25579,9 @@ function getCondLines(d, defTotals){
         const finalY=dt.ty+totalPrevY;
         const finalM=dt.tm+totalPrevM;
         const finalDv=dt.td+totalPrevDv;
-        let totalStr=' รวมโทษจำคุก'+nms(nm.trim())+'ทั้งสิ้น มีกำหนด '+fmtUTSplit(finalY,finalM,finalDv);
+        const _nm=nm.trim();
+        const _sfx=/[๐-๙0-9]$/.test(_nm)?' มีกำหนด ':' ';
+        let totalStr=' รวมโทษจำคุก'+_nm+_sfx+fmtUTSplit(finalY,finalM,finalDv);
         if(dt.tf>0) totalStr+=' และปรับ '+thMoney(Math.round(dt.tf*100)/100)+' บาท';
         out.push(addpParts.join(' ')+totalStr);
       }
@@ -25496,6 +25613,10 @@ function buildText(){
   if(!allC.length) return '';
 
   const shared=allC.filter(c=>m83ids.has(c.id));
+  // m83m90 dim ids — ไม่แสดงแยกใน verdictLines เพราะรวมอยู่ใน verdict ม.๘๓ heavy แล้ว
+  const m83m90DimOnlyIds=new Set();
+  m83m90.forEach(g=>{if(g.heavy) g.ids.forEach(id=>{if(id!==g.heavy) m83m90DimOnlyIds.add(id);});});
+  const sharedFiltered=shared.filter(c=>!m83m90DimOnlyIds.has(c.id));
   // indiv = ฐานที่ไม่ใช่ shared จริง (ตรวจ sharedWith per def)
   // ฐานใน m83ids แต่ถ้าจำเลยบางคนติ๊กเดี่ยว = individual ของคนนั้น
   function isSharedCharge(cid){
@@ -25526,11 +25647,6 @@ function buildText(){
   // mkJsfx: suffix ระหว่างชื่อจำเลยกับตัวเลขโทษ
   // ถ้า lbl ลงท้ายด้วยตัวเลข (เช่น "จำเลยที่ ๑") → ต้องมี "มีกำหนด" คั่น
   // ถ้า lbl ลงท้ายด้วยตัวอักษร (เช่น "จำเลย", "จำเลยทั้งสอง") → ไม่ต้องมี
-  function mkJsfx(lbl,multi){
-    const needsMk=/[๐-๙0-9]$/.test(lbl.trim());
-    if(multi) return needsMk?' มีกำหนดคนละ ':'คนละ ';
-    return needsMk?' มีกำหนด ':' ';
-  }
   function formatMatras(charges){
     // deduplicate
     const seen=new Set();
@@ -25571,10 +25687,9 @@ function buildText(){
   }
   function dedupMatra(charges){ return charges.filter((c,i,a)=>a.findIndex(x=>x.matra===c.matra)===i); }
   let verdictLines=[];
-  if(shared.length>0){
-    // group charges ตาม defSet — charges ที่มี def เหมือนกันอยู่บรรทัดเดียวกัน
-    const defSetGroups={}; // key = sorted defNums string
-    shared.forEach(c=>{
+  if(sharedFiltered.length>0){
+    const defSetGroups={};
+    sharedFiltered.forEach(c=>{
       const defSet=m83map[c.id]?[...m83map[c.id]].sort().join(','):defs.join(',');
       if(!defSetGroups[defSet]) defSetGroups[defSet]=[];
       defSetGroups[defSet].push(c);
@@ -25582,7 +25697,33 @@ function buildText(){
     Object.entries(defSetGroups).forEach(([defKey, charges])=>{
       const defNums=defKey.split(',').map(Number).filter(d=>defs.includes(d));
       const lbl=defNums.length===defs.length?grpLbl(defs):grpLbl(defNums);
-      const sm=formatMatras(dedupMatra(charges));
+      // รวม dim ของ m83m90 ที่อยู่ในกลุ่มนี้เข้าไปด้วย (บทเบาของ ม.๙๐ ภายใต้ ม.๘๓)
+      const chargeIds=new Set(charges.map(c=>c.id));
+      const m83m90DimExtra=[];
+      // 1) m83m90 dim (ม.๙๐ ที่ตั้งใน m83m90 panel)
+      m83m90.forEach(grp=>{
+        if(!grp.heavy||!chargeIds.has(grp.heavy)) return;
+        grp.ids.forEach(id=>{
+          if(id!==grp.heavy&&!chargeIds.has(id)){
+            const c=CHARGES.find(x=>x.id===id);
+            if(c) m83m90DimExtra.push(c);
+          }
+        });
+      });
+      // 2) m90 individual dim — เมื่อ heavy ของจำเลยนั้นอยู่ใน m83ids (ร่วมกระทำ)
+      defNums.forEach(d=>{
+        (m90groups[d-1]||[]).forEach(grp=>{
+          if(!grp.heavy||!chargeIds.has(grp.heavy)) return;
+          grp.ids.forEach(id=>{
+            if(id!==grp.heavy&&!chargeIds.has(id)){
+              const c=CHARGES.find(x=>x.id===id);
+              if(c) m83m90DimExtra.push(c);
+            }
+          });
+        });
+      });
+      const allCharges=dedupMatra([...charges,...m83m90DimExtra]);
+      const sm=formatMatras(allCharges);
       verdictLines.push(nms(lbl)+'มีความผิดตาม'+sm+' ประกอบประมวลกฎหมายอาญา มาตรา ๘๓');
     });
   }
@@ -25595,10 +25736,10 @@ function buildText(){
       if(!g.heavy||g.heavy==='') return;
       g.ids.forEach(id=>{ if(id!==g.heavy) s.add(id); });
     });
+    // m83m90 dim — กรองออกจากทุกจำเลย เพราะแสดงใน verdict ม.๘๓ แล้ว
     m83m90.forEach(g=>{
       if(!g.heavy||g.heavy==='') return;
-      if(m83map[g.heavy]&&m83map[g.heavy].has(d))
-        g.ids.forEach(id=>{ if(id!==g.heavy) s.add(id); });
+      g.ids.forEach(id=>{ if(id!==g.heavy) s.add(id); });
     });
     return s;
   }
@@ -25609,19 +25750,36 @@ function buildText(){
     // per-defendant dim: กรองเฉพาะ dim ของ def นั้นๆ ไม่ใช่ global
     const myDimIds=dimIdsForDef(d);
     const myC=allC.filter(c=>rawIds.has(c.id)&&!isSharedCharge(c.id)&&!myDimIds.has(c.id));
-    if(!myC.length) return;
+    // รวม dim ของ ม.๙๐ individual เข้ามาใน matra แต่ไม่รวม m83m90 dim (แสดงใน ม.๘๓ แล้ว)
+    // dim ของ m90 individual ที่ heavy อยู่ใน m83 → แสดงใน verdict ม.83 แล้ว ไม่ต้องสร้าง individual line
+    const m90IndivDimInM83=new Set();
+    (m90groups[d-1]||[]).forEach(grp=>{
+      if(!grp.heavy||!m83ids.has(grp.heavy)) return;
+      grp.ids.forEach(id=>{ if(id!==grp.heavy) m90IndivDimInM83.add(id); });
+    });
+    const m83m90AllDimIds=new Set();
+    m83m90.forEach(g=>{if(g.heavy) g.ids.forEach(id=>{if(id!==g.heavy) m83m90AllDimIds.add(id);});});
+    const allDimToExclude=new Set([...m83m90AllDimIds,...m90IndivDimInM83]);
+    const myCWithDim=allC.filter(c=>rawIds.has(c.id)&&!isSharedCharge(c.id)&&!allDimToExclude.has(c.id));
+    if(!myCWithDim.length) return;
     // หาจำเลยอื่นที่มีฐาน indiv เหมือนกันทุกฐาน (ใช้ per-defendant dim ของแต่ละคน)
-    const myIds=new Set(myC.map(c=>c.id));
+    const myIds=new Set(myCWithDim.map(c=>c.id));
     const sameGroup=defs.filter(dd=>{
       const ddRawIds=new Set(getChargedRaw(dd).map(c=>c.id));
-      const ddDimIds=dimIdsForDef(dd);
-      const ddC=allC.filter(c=>ddRawIds.has(c.id)&&!isSharedCharge(c.id)&&!ddDimIds.has(c.id));
-      if(ddC.length!==myC.length) return false;
-      return ddC.every(c=>myIds.has(c.id));
+      // ใช้ logic เดียวกับ myCWithDim
+      const ddM90IndivDimInM83=new Set();
+      (m90groups[dd-1]||[]).forEach(grp=>{
+        if(!grp.heavy||!m83ids.has(grp.heavy)) return;
+        grp.ids.forEach(id=>{ if(id!==grp.heavy) ddM90IndivDimInM83.add(id); });
+      });
+      const ddM83m90AllDimIds=new Set();
+      m83m90.forEach(g=>{if(g.heavy) g.ids.forEach(id=>{if(id!==g.heavy) ddM83m90AllDimIds.add(id);});});
+      const ddAllDimToExclude=new Set([...ddM83m90AllDimIds,...ddM90IndivDimInM83]);
+      const ddCWithDim=allC.filter(c=>ddRawIds.has(c.id)&&!isSharedCharge(c.id)&&!ddAllDimToExclude.has(c.id));
+      if(ddCWithDim.length!==myCWithDim.length) return false;
+      return ddCWithDim.every(c=>myIds.has(c.id));
     });
     sameGroup.forEach(dd=>verdictUsed.add(dd));
-    // รวม dim ของ ม.๙๐ ของ def นั้น เข้ามาใน matra เพื่อแสดงในบรรทัดพิพากษาว่า
-    const myCWithDim=allC.filter(c=>rawIds.has(c.id)&&!isSharedCharge(c.id));
     const myCD=dedupMatra(myCWithDim);
     if(sameGroup.length===defs.length&&defs.length>1){
       verdictLines.push(nms(grpLbl(defs))+'มีความผิดตาม'+formatMatras(myCD));
@@ -26377,15 +26535,30 @@ function buildText(){
     const val2=id=>document.getElementById(id)?.value||'';
     const nm2=N===1?'จำเลย':'จำเลยที่ '+gl(d);
     if(ck2('naft')){
-      const naftDismiss=document.getElementById('naft_dismiss_'+d)?.checked;
-      if(naftDismiss){
-        const hasRdef4=document.getElementById('sc_rdef_d'+d)?.checked;
-        const rototype=hasRdef4?'รอการกำหนดโทษ':'รอการลงโทษ';
-        lines.push('ส่วนที่โจทก์ขอให้นับโทษ'+nms(nm2)+'ต่อจากคดีอื่น เนื่องจากคดีนี้ศาล'+rototype+' จึงให้ยกคำขอในส่วนนี้');
-      } else {
-        lines.push('นับโทษจำคุกของ'+nms(nm2)+'ในคดีนี้ต่อจากโทษในคดีอาญาหมายเลขแดงที่ '+(val2('an'+d)||'___')+' ของศาล '+(val2('act'+d)||'___'));
-      }
+        lines.push('นับโทษจำคุกของ'+nms(nm2)+'ในคดีนี้ต่อจากโทษในคดีอาญาหมายเลขแดงที่ '+(val2('an'+d)||'___')+' ของศาล'+(val2('act'+d)||'___'));
     }
+  });
+
+  // ── ๑๑. คืนทรัพย์ (per-def checkbox รวมบรรทัดเดียว) + ยกคำขออื่น ─────────────
+  const retnChecked=defs.filter(d=>document.getElementById('retn_d'+d)?.checked);
+  if(retnChecked.length>0){
+    const rv=(document.getElementById('retn_val')?.value||'').trim();
+    let retnNm;
+    const thaiAll={2:'ทั้งสอง',3:'ทั้งสาม'};
+    if(retnChecked.length===defs.length&&N>1){
+      retnNm='จำเลย'+(thaiAll[N]||'ทั้งหมด');
+    } else if(retnChecked.length===1&&N===1){
+      retnNm='จำเลย';
+    } else {
+      retnNm=retnChecked.map(d=>'จำเลยที่ '+gl(d)).join(' และ');
+    }
+    const retnTxt=rv?'คืนหรือใช้ราคาทรัพย์ '+rv+' แก่ผู้เสียหาย':'คืนหรือใช้ราคาทรัพย์แก่ผู้เสียหาย';
+    lines.push('ให้'+nms(retnNm)+retnTxt);
+  }
+  defs.forEach(d=>{
+    const ck2=id=>document.getElementById('ck_'+id+'_'+d)?.checked;
+    const val2=id=>document.getElementById(id)?.value||'';
+    if(ck2('yrq')&&val2('yrq1_'+d).trim()) lines.push('ส่วนที่โจทก์ขอให้ '+val2('yrq1_'+d).trim()+' นั้น เนื่องจากศาล'+(val2('yrq2_'+d).trim()||'___')+' จึงให้ยกคำขอในส่วนนี้');
   });
 
   // ── post-process: fix spacing ──────────────────────────
@@ -26530,6 +26703,10 @@ function resetInputs(){
   ['defTitle1','defTitle2','defTitle3'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const ci=document.getElementById('ci_sh'); if(ci) ci.value='';
   const confItem=document.getElementById('conf_item'); if(confItem) confItem.value='';
+  [1,2,3].forEach(d=>{
+    const cb=document.getElementById('retn_d'+d); if(cb) cb.checked=false;
+  });
+  const rv=document.getElementById('retn_val'); if(rv) rv.value='';;
 }
 
 function clearAll(){
@@ -26606,6 +26783,7 @@ function clearAll(){
   });
   // Rebuild กล่อง ⑤⑥⑦⑧
   buildCCards();
+  updateVis();
   document.getElementById('prevbox').classList.remove('open');
   showToast('ล้างข้อมูลแล้ว');
   window.scrollTo({top:0, behavior:'smooth'});
@@ -26632,6 +26810,17 @@ function _tCheck(id,val){const el=document.getElementById(id);if(!el)return;el.c
 
 
 </script>
+
+<!-- OCH Modal -->
+<div id="ochModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;width:min(480px,92vw);max-height:70vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.25);">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #eee;background:#1B2A4A;">
+      <span style="font-size:15px;font-weight:700;color:#F0C040;">📋 ฐานที่เคยบันทึก</span>
+      <button onclick="ochCloseModal()" style="border:none;background:transparent;color:#fff;font-size:20px;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <div id="ochList" style="flex:1;overflow-y:auto;padding:4px 0;"></div>
+  </div>
+</div>
 
 </body>
 </html>
