@@ -25567,7 +25567,7 @@ function getCondLines(d, defTotals){
       cases.forEach(c=>{
         const py=(c.y||0), pm=(c.m||0), pdv=(c.dv||0);
         if(!py&&!pm&&!pdv) return;
-        const caseNo=c.caseNo||'___', court=c.court||'___';
+        const caseNo=(c.caseNo||'___').replace(/[0-9]/g,d=>th(d)), court=c.court||'___';
         const prevStr=fmtUTSplit(py,pm,pdv);
         addpParts.push('บวกโทษจำคุก '+prevStr+' ของ'+nms(nm.trim())+'ที่รอการลงโทษไว้ในคดีอาญาหมายเลขแดงที่ '+caseNo+' ของศาล'+court+' เข้ากับโทษในคดีนี้ ตามประมวลกฎหมายอาญา มาตรา ๕๘');
         totalPrevY+=py; totalPrevM+=pm; totalPrevDv+=pdv;
@@ -26535,7 +26535,7 @@ function buildText(){
     const val2=id=>document.getElementById(id)?.value||'';
     const nm2=N===1?'จำเลย':'จำเลยที่ '+gl(d);
     if(ck2('naft')){
-        lines.push('นับโทษจำคุกของ'+nms(nm2)+'ในคดีนี้ต่อจากโทษในคดีอาญาหมายเลขแดงที่ '+(val2('an'+d)||'___')+' ของศาล'+(val2('act'+d)||'___'));
+        lines.push('นับโทษจำคุกของ'+nms(nm2)+'ในคดีนี้ต่อจากโทษในคดีอาญาหมายเลขแดงที่ '+((val2('an'+d)||'___').replace(/[0-9]/g,d=>th(d)))+' ของศาล'+(val2('act'+d)||'___'));
     }
   });
 
