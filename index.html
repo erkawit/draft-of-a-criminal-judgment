@@ -23594,20 +23594,32 @@ function updateThaiDate(){
 
 
 
+function selPrb(id){
+  const prbSel=document.getElementById('ol_prb_'+id);
+  const inp=document.getElementById('ol_'+id);
+  if(!prbSel||!inp) return;
+  if(prbSel.value) inp.value=prbSel.value;
+  updateOtherChargeFull(id);
+}
+
 function updOtherLawType(id){
   const sel=document.getElementById('ol_type_'+id);
   const inp=document.getElementById('ol_'+id);
+  const prbSel=document.getElementById('ol_prb_'+id);
   if(!sel||!inp) return;
   if(sel.value==='poc'){
     inp.value='ประมวลกฎหมายอาญา'; inp.readOnly=true;
     inp.style.background='#f5f5f5'; inp.style.color='#555';
+    if(prbSel) prbSel.style.display='none';
   } else if(sel.value==='prb'){
     inp.value=''; inp.readOnly=false;
     inp.placeholder='ชื่อพระราชบัญญัติ';
     inp.style.background=''; inp.style.color='';
+    if(prbSel){ prbSel.style.display=''; prbSel.value=''; }
   } else {
     inp.value=''; inp.readOnly=false;
     inp.style.background=''; inp.style.color='';
+    if(prbSel) prbSel.style.display='none';
   }
   updateOtherChargeFull(id);
 }
@@ -23829,6 +23841,20 @@ function buildCtbl(){
               <option value="poc">ประมวลกฎหมายอาญา</option>
               <option value="prb">พระราชบัญญัติ...</option>
             </select>
+          <select id="ol_prb_${oc.id}" style="display:none;border:1px solid #c084fc;border-radius:4px;padding:2px 4px;font-size:11px;max-width:180px;" onchange="selPrb('${oc.id}')">
+            <option value="">— เลือก พ.ร.บ. ที่ใช้บ่อย —</option>
+            <option value="การพนัน พ.ศ. ๒๔๗๘">พระราชบัญญัติการพนัน พ.ศ. ๒๔๗๘</option>
+            <option value="คนเข้าเมือง พ.ศ. ๒๕๒๒">พระราชบัญญัติคนเข้าเมือง พ.ศ. ๒๕๒๒</option>
+            <option value="คุ้มครองผู้ถูกกระทำด้วยความรุนแรงในครอบครัว พ.ศ. ๒๕๕๐">พระราชบัญญัติคุ้มครองผู้ถูกกระทำด้วยความรุนแรงในครอบครัว พ.ศ. ๒๕๕๐</option>
+            <option value="จราจรทางบก พ.ศ. ๒๕๒๒">พระราชบัญญัติจราจรทางบก พ.ศ. ๒๕๒๒</option>
+            <option value="จัดหางานและคุ้มครองคนหางาน พ.ศ. ๒๕๒๘">พระราชบัญญัติจัดหางานและคุ้มครองคนหางาน พ.ศ. ๒๕๒๘</option>
+            <option value="ป่าไม้ พ.ศ. ๒๔๘๕">พระราชบัญญัติป่าไม้ พ.ศ. ๒๔๘๕</option>
+            <option value="ป่าสงวนแห่งชาติ พ.ศ. ๒๕๐๗">พระราชบัญญัติป่าสงวนแห่งชาติ พ.ศ. ๒๕๐๗</option>
+            <option value="รถยนต์ พ.ศ. ๒๕๒๒">พระราชบัญญัติรถยนต์ พ.ศ. ๒๕๒๒</option>
+            <option value="เลื่อยโซ่ยนต์ พ.ศ. ๒๕๔๕">พระราชบัญญัติเลื่อยโซ่ยนต์ พ.ศ. ๒๕๔๕</option>
+            <option value="ห้ามเรียกดอกเบี้ยเกินอัตรา พ.ศ. ๒๕๖๐">พระราชบัญญัติห้ามเรียกดอกเบี้ยเกินอัตรา พ.ศ. ๒๕๖๐</option>
+            <option value="อาวุธปืน เครื่องกระสุนปืน วัตถุระเบิด ดอกไม้เพลิง และสิ่งเทียมอาวุธปืน พ.ศ. ๒๔๙๐">พระราชบัญญัติอาวุธปืน เครื่องกระสุนปืน วัตถุระเบิด ดอกไม้เพลิง และสิ่งเทียมอาวุธปืน พ.ศ. ๒๔๙๐</option>
+          </select>
           <span style="font-size:11px;color:#666;">ม.</span>
           <input type="text" id="oa_${oc.id}" placeholder="มาตรา"
             style="width:60px;border:1px solid #ccc;border-radius:4px;padding:3px 6px;font-size:11px;"
