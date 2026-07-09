@@ -23602,7 +23602,8 @@ function updOtherLawType(id){
     inp.value='ประมวลกฎหมายอาญา'; inp.readOnly=true;
     inp.style.background='#f5f5f5'; inp.style.color='#555';
   } else if(sel.value==='prb'){
-    inp.value='พระราชบัญญัติ'; inp.readOnly=false;
+    inp.value=''; inp.readOnly=false;
+    inp.placeholder='ชื่อพระราชบัญญัติ';
     inp.style.background=''; inp.style.color='';
   } else {
     inp.value=''; inp.readOnly=false;
@@ -23691,8 +23692,7 @@ function updateOtherChargeFull(id){
   // แปลง type → ชื่อกฎหมายเต็ม
   let lawFull = rawLaw;
   if(typeVal==='poc') lawFull='ประมวลกฎหมายอาญา';
-  else if(typeVal==='prb' && rawLaw) lawFull=rawLaw; // พ.ร.บ. + ชื่อที่กรอก
-  else if(typeVal==='prb') lawFull='พระราชบัญญัติ...';
+  else if(typeVal==='prb') lawFull=rawLaw?'พระราชบัญญัติ'+rawLaw:'พระราชบัญญัติ...';
 
   const oc=otherCharges.find(c=>c.id===id);
   if(oc){
