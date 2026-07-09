@@ -23602,24 +23602,39 @@ function selPrb(id){
   updateOtherChargeFull(id);
 }
 
+function selPrk(id){
+  const prkSel=document.getElementById('ol_prk_'+id);
+  const inp=document.getElementById('ol_'+id);
+  if(!prkSel||!inp) return;
+  if(prkSel.value) inp.value=prkSel.value;
+  updateOtherChargeFull(id);
+}
+
 function updOtherLawType(id){
   const sel=document.getElementById('ol_type_'+id);
   const inp=document.getElementById('ol_'+id);
   const prbSel=document.getElementById('ol_prb_'+id);
+  const prkSel=document.getElementById('ol_prk_'+id);
   if(!sel||!inp) return;
+  // ซ่อน dropdown ย่อยทั้งหมดก่อน
+  if(prbSel) prbSel.style.display='none';
+  if(prkSel) prkSel.style.display='none';
   if(sel.value==='poc'){
     inp.value='ประมวลกฎหมายอาญา'; inp.readOnly=true;
     inp.style.background='#f5f5f5'; inp.style.color='#555';
-    if(prbSel) prbSel.style.display='none';
   } else if(sel.value==='prb'){
     inp.value=''; inp.readOnly=false;
     inp.placeholder='ชื่อพระราชบัญญัติ';
     inp.style.background=''; inp.style.color='';
     if(prbSel){ prbSel.style.display=''; prbSel.value=''; }
+  } else if(sel.value==='prk'){
+    inp.value=''; inp.readOnly=false;
+    inp.placeholder='ชื่อพระราชกำหนด';
+    inp.style.background=''; inp.style.color='';
+    if(prkSel){ prkSel.style.display=''; prkSel.value=''; }
   } else {
     inp.value=''; inp.readOnly=false;
     inp.style.background=''; inp.style.color='';
-    if(prbSel) prbSel.style.display='none';
   }
   updateOtherChargeFull(id);
 }
@@ -23702,14 +23717,18 @@ function updateOtherChargeFull(id){
   const lbl=(document.getElementById('on_'+id)?.value||'').trim();
 
   // แปลง type → ชื่อกฎหมายเต็ม
-  let lawFull = rawLaw;
+  const toThai=s=>s.replace(/[0-9]/g,d=>th(d));
+  let lawFull = toThai(rawLaw);
   if(typeVal==='poc') lawFull='ประมวลกฎหมายอาญา';
-  else if(typeVal==='prb') lawFull=rawLaw?'พระราชบัญญัติ'+rawLaw:'พระราชบัญญัติ...';
+  else if(typeVal==='prb') lawFull=rawLaw?'พระราชบัญญัติ'+toThai(rawLaw):'พระราชบัญญัติ...';
+  else if(typeVal==='prk') lawFull=rawLaw?'พระราชกำหนด'+toThai(rawLaw):'พระราชกำหนด...';
+  const artThai=toThai(art);
+  const parThai=toThai(par);
 
   const oc=otherCharges.find(c=>c.id===id);
   if(oc){
-    oc.label=lbl||(lawFull&&art?lawFull+' มาตรา '+art:lawFull)||'ฐานอื่น';
-    oc.matra=(lawFull?lawFull:'')+(art?' มาตรา '+art:'')+(par?' วรรค'+par:'');
+    oc.label=lbl||(lawFull&&artThai?lawFull+' มาตรา '+artThai:lawFull)||'ฐานอื่น';
+    oc.matra=(lawFull?lawFull:'')+(artThai?' มาตรา '+artThai:'')+(parThai?' วรรค'+parThai:'');
   }
   const cc=CHARGES.find(c=>c.id===id);
   if(cc){
@@ -23840,6 +23859,7 @@ function buildCtbl(){
               <option value="">ประเภท</option>
               <option value="poc">ประมวลกฎหมายอาญา</option>
               <option value="prb">พระราชบัญญัติ...</option>
+              <option value="prk">พระราชกำหนด...</option>
             </select>
           <select id="ol_prb_${oc.id}" style="display:none;border:1px solid #c084fc;border-radius:4px;padding:2px 4px;font-size:11px;max-width:180px;" onchange="selPrb('${oc.id}')">
             <option value="">— เลือก พ.ร.บ. ที่ใช้บ่อย —</option>
@@ -23854,6 +23874,10 @@ function buildCtbl(){
             <option value="เลื่อยโซ่ยนต์ พ.ศ. ๒๕๔๕">พระราชบัญญัติเลื่อยโซ่ยนต์ พ.ศ. ๒๕๔๕</option>
             <option value="ห้ามเรียกดอกเบี้ยเกินอัตรา พ.ศ. ๒๕๖๐">พระราชบัญญัติห้ามเรียกดอกเบี้ยเกินอัตรา พ.ศ. ๒๕๖๐</option>
             <option value="อาวุธปืน เครื่องกระสุนปืน วัตถุระเบิด ดอกไม้เพลิง และสิ่งเทียมอาวุธปืน พ.ศ. ๒๔๙๐">พระราชบัญญัติอาวุธปืน เครื่องกระสุนปืน วัตถุระเบิด ดอกไม้เพลิง และสิ่งเทียมอาวุธปืน พ.ศ. ๒๔๙๐</option>
+          </select>
+          <select id="ol_prk_${oc.id}" style="display:none;border:1px solid #fb923c;border-radius:4px;padding:2px 4px;font-size:11px;max-width:180px;" onchange="selPrk('${oc.id}')">
+            <option value="">— เลือก พ.ร.กำหนด ที่ใช้บ่อย —</option>
+            <option value="มาตรการป้องกันและปราบปรามอาชญากรรมทางเทคโนโลยี พ.ศ. ๒๕๖๖">พระราชกำหนดมาตรการป้องกันและปราบปรามอาชญากรรมทางเทคโนโลยี พ.ศ. ๒๕๖๖</option>
           </select>
           <span style="font-size:11px;color:#666;">ม.</span>
           <input type="text" id="oa_${oc.id}" placeholder="มาตรา"
