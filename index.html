@@ -23419,7 +23419,7 @@ main{max-width:1280px;margin:0 auto;padding:20px 16px 60px;}
 <!-- ══ กล่อง ⑦: ค่าปรับ + ริบของกลาง ════════════════════ -->
 <div class="card" id="box7Fine" style="margin-top:14px;">
   <div class="sec-hd" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onclick="document.getElementById('box7Body').style.display=document.getElementById('box7Body').style.display==='none'?'block':'none'">
-    <span>⑦ ค่าปรับ + ริบของกลาง</span><span style="font-size:11px;">▼</span>
+    <span>⑦ ค่าปรับ + ริบของกลาง + คืนทรัพย์</span><span style="font-size:11px;">▼</span>
   </div>
   <div id="box7Body" style="padding:14px 0 4px;"><div id="box7Inner"></div></div>
 </div>
@@ -23476,6 +23476,7 @@ const CHARGES = [
 let N = 1;
 const MAX_DEFS = 3;
 let otherCharges = []; // [{id, label, matra}] กฎหมายอื่น
+let retnItems=[]; // [{checked:[], asset:"", price:"", victim:""}]
 let addpCases = Array.from({length:MAX_DEFS},()=>[]); // [{caseNo,court,y,m,dv}] per defendant // จำนวนจำเลยสูงสุดที่รองรับ
 let names = ["จำเลยที่ ๑","จำเลยที่ ๒","จำเลยที่ ๓"];
 function defName(d){ return N===1?'จำเลย':names[d-1]; }
@@ -23958,7 +23959,6 @@ function updateVis(){
     });
     // retn per-def row
     const retnRow=document.getElementById('retn_row_'+d); if(retnRow) retnRow.style.display=show?'':'none';
-    const retnLabel=document.getElementById('retn_label_'+d); if(retnLabel) retnLabel.style.display=show?'':'none';
     // penalty & cond cards
     const pc=document.getElementById('pc'+d); if(pc) pc.classList.toggle('hide',!show);
     const cc=document.getElementById('cc'+d); if(cc) cc.classList.toggle('hide',!show);
@@ -25424,22 +25424,61 @@ function buildBox7Fine(){
     '<input class="cii" style="width:240px;margin-left:8px;" type="text" placeholder="รายการของกลาง (เว้นว่างถ้าไม่ระบุ)" id="conf_item">';
   c.appendChild(confDiv);
 
-  // คืนทรัพย์
-  const retnDiv=document.createElement('div');
-  retnDiv.style.cssText='border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:#fafafa;margin-top:6px;';
-  let retnHtml=
-    '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:6px;">'+
-    '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;"><input type="checkbox" id="retn_d1" style="accent-color:var(--navy);width:13px;height:13px;"> จำเลยที่ ๑</label>'+
-    '<label id="retn_label_2" style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;'+(N<2?'display:none':'')+'\"><input type="checkbox" id="retn_d2" style="accent-color:var(--navy);width:13px;height:13px;"> จำเลยที่ ๒</label>'+
-    '<label id="retn_label_3" style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;'+(N<3?'display:none':'')+'\"><input type="checkbox" id="retn_d3" style="accent-color:var(--navy);width:13px;height:13px;"> จำเลยที่ ๓</label>'+
-    '</div>'+
-    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;">'+
-    '<span>ให้จำเลยคืนหรือใช้ราคาทรัพย์</span>'+
-    '<input class="cii" style="width:200px;" type="text" placeholder="ระบุรายละเอียด" id="retn_val">'+
-    '<span>แก่ผู้เสียหาย</span>'+
-    '</div>';
-  retnDiv.innerHTML=retnHtml;
-  c.appendChild(retnDiv);
+  // คืนทรัพย์ — หลายรายการ
+  const retnWrap=document.createElement('div');
+  retnWrap.id='retnWrap';
+  retnWrap.style.cssText='margin-top:6px;';
+
+  function buildRetnRows(){
+    retnWrap.innerHTML='';
+    // header
+    const hdr=document.createElement('div');
+    hdr.style.cssText='font-size:12px;font-weight:700;color:var(--sub);letter-spacing:.04em;margin-bottom:4px;';
+    hdr.textContent='คืนทรัพย์สิน / ค่าทดแทน';
+    retnWrap.appendChild(hdr);
+    // rows
+    retnItems.forEach((item,idx)=>{
+      const row=document.createElement('div');
+      row.style.cssText='border:1px solid var(--border);border-radius:8px;padding:9px 12px;background:#fafafa;margin-bottom:6px;';
+      // จำเลย checkboxes
+      let defHtml='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px;">';
+      [1,2,3].forEach(d=>{
+        const hide=d>N?'display:none;':'';
+        defHtml+=`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;${hide}" id="retn_dlbl_${idx}_${d}"><input type="checkbox" id="retn_d_${idx}_${d}" style="accent-color:var(--navy);width:13px;height:13px;"${item.checked.includes(d)?' checked':''}> จำเลยที่ ${['๑','๒','๓'][d-1]}</label>`;
+      });
+      defHtml+='</div>';
+      // fields
+      defHtml+=`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13px;">
+        <span style="white-space:nowrap;">ให้คืน</span>
+        <input class="cii" style="width:160px;" type="text" placeholder="ชื่อทรัพย์" id="retn_asset_${idx}" value="${item.asset}" oninput="retnItems[${idx}].asset=this.value">
+        <span style="white-space:nowrap;">แก่ ผู้เสียหาย</span>
+        <input class="cii" style="width:70px;" type="text" placeholder="ที่ ๑" id="retn_victim_${idx}" value="${item.victim}" oninput="retnItems[${idx}].victim=this.value">
+        <span style="white-space:nowrap;">หากคืนไม่ได้ราคา</span>
+        <input class="cii" style="width:90px;" type="text" placeholder="บาท (ถ้ามี)" id="retn_price_${idx}" value="${item.price}" oninput="retnItems[${idx}].price=this.value">
+        <span>บาท</span>
+        <button onclick="retnItems.splice(${idx},1);buildRetnRows();" style="border:none;background:#ffebee;color:#c62828;border-radius:4px;padding:2px 8px;font-size:12px;cursor:pointer;margin-left:4px;">✕</button>
+      </div>`;
+      // sync checkboxes
+      row.innerHTML=defHtml;
+      [1,2,3].forEach(d=>{
+        const cb=row.querySelector('#retn_d_'+idx+'_'+d);
+        if(cb) cb.onchange=(function(i,dd){return function(){
+          if(this.checked){if(!retnItems[i].checked.includes(dd)) retnItems[i].checked.push(dd);}
+          else{retnItems[i].checked=retnItems[i].checked.filter(x=>x!==dd);}
+        };})(idx,d);
+      });
+      retnWrap.appendChild(row);
+    });
+    // ปุ่มเพิ่ม
+    const addBtn=document.createElement('button');
+    addBtn.className='add-grp';
+    addBtn.style.cssText='border-color:#2e7d32;color:#2e7d32;font-size:12px;margin-top:2px;';
+    addBtn.textContent='+ เพิ่มรายการคืนทรัพย์';
+    addBtn.onclick=function(){retnItems.push({checked:[],asset:'',price:'',victim:''});buildRetnRows();};
+    retnWrap.appendChild(addBtn);
+  }
+  buildRetnRows();
+  c.appendChild(retnWrap);
 }
 
 // ── กล่อง ⑧: นับโทษต่อ + คำขออื่น ──────────────────────
@@ -26589,22 +26628,22 @@ function buildText(){
     }
   });
 
-  // ── ๑๑. คืนทรัพย์ (per-def checkbox รวมบรรทัดเดียว) + ยกคำขออื่น ─────────────
-  const retnChecked=defs.filter(d=>document.getElementById('retn_d'+d)?.checked);
-  if(retnChecked.length>0){
-    const rv=(document.getElementById('retn_val')?.value||'').trim();
+  // ── ๑๑. คืนทรัพย์ (หลายรายการ) + ยกคำขออื่น ─────────────
+  retnItems.forEach(item=>{
+    const rc=defs.filter(d=>item.checked.includes(d));
+    if(!rc.length||!item.asset.trim()) return;
     let retnNm;
-    const thaiAll={2:'ทั้งสอง',3:'ทั้งสาม'};
-    if(retnChecked.length===defs.length&&N>1){
-      retnNm='จำเลย'+(thaiAll[N]||'ทั้งหมด');
-    } else if(retnChecked.length===1&&N===1){
-      retnNm='จำเลย';
-    } else {
-      retnNm=retnChecked.map(d=>'จำเลยที่ '+gl(d)).join(' และ');
-    }
-    const retnTxt=rv?'คืนหรือใช้ราคาทรัพย์ '+rv+' แก่ผู้เสียหาย':'คืนหรือใช้ราคาทรัพย์แก่ผู้เสียหาย';
-    lines.push('ให้'+nms(retnNm)+retnTxt);
-  }
+    const thaiAll2={2:'ทั้งสอง',3:'ทั้งสาม'};
+    if(rc.length===defs.length&&N>1) retnNm='จำเลย'+(thaiAll2[N]||'ทั้งหมด');
+    else if(rc.length===1&&N===1) retnNm='จำเลย';
+    else retnNm=rc.map(d=>'จำเลยที่ '+gl(d)).join(' และ');
+    const victimSuffix=(item.victim||'').trim();
+    const victim='ผู้เสียหาย'+victimSuffix;
+    const asset=item.asset.trim();
+    const fmtP=s=>{const n=parseFloat(s.replace(/,/g,''));return isNaN(n)?s:th(n.toLocaleString('en'));};
+    const price=item.price?fmtP(item.price.trim()):'';
+    lines.push('ให้'+nms(retnNm)+'คืน'+asset+'แก่'+victim+(price?' หากคืนไม่ได้ให้ใช้ราคา '+price+' บาท แก่'+victim:''));
+  });
   defs.forEach(d=>{
     const ck2=id=>document.getElementById('ck_'+id+'_'+d)?.checked;
     const val2=id=>document.getElementById(id)?.value||'';
@@ -26753,10 +26792,8 @@ function resetInputs(){
   ['defTitle1','defTitle2','defTitle3'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const ci=document.getElementById('ci_sh'); if(ci) ci.value='';
   const confItem=document.getElementById('conf_item'); if(confItem) confItem.value='';
-  [1,2,3].forEach(d=>{
-    const cb=document.getElementById('retn_d'+d); if(cb) cb.checked=false;
-  });
-  const rv=document.getElementById('retn_val'); if(rv) rv.value='';;
+  retnItems=[];
+  buildBox7Fine();;
 }
 
 function clearAll(){
